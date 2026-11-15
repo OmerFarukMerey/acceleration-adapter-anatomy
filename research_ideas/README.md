@@ -5,6 +5,7 @@ The term project now follows one idea. This folder holds everything needed to st
 | File | What it is |
 |---|---|
 | [proposal.md](proposal.md) | The project proposal: question, hypotheses, plan, timeline |
+| [plan-explained.md](plan-explained.md) | The same plan in plain language, for a newcomer to generative AI |
 | [01-anatomy-of-acceleration-adapters.md](01-anatomy-of-acceleration-adapters.md) | The idea in brief, with the pilot table and prior work |
 | [study-guide.md](study-guide.md) | Background explanation and a reading list |
 | [pilots.md](pilots.md) | How the pilot experiments were run |
@@ -12,9 +13,9 @@ The term project now follows one idea. This folder holds everything needed to st
 ## The idea in one paragraph
 
 Few-step distillation is shipped as a low-rank weight delta on a base model, such as
-LCM-LoRA. The project takes such deltas apart in weight space and asks where the few-step
-ability lives. In the pilot, LCM-LoRA for Stable Diffusion 1.5 kept 96% of its effect when
-cut from rank 64 to rank 4, and 82% of its energy sat in the decoder half of the UNet.
+LCM-LoRA. The project asks whether different distillation methods change the model in the
+same direction. In the pilot, one direction per layer carried LCM-LoRA's effect: keeping
+1 of 64 directions preserved 87% of it, and the other 63 together did nothing.
 
 ## How this follows from the first experiment
 
