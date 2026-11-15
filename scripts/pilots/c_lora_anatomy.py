@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from types import SimpleNamespace
 
 import numpy as np
 import torch
 from diffusers import AutoencoderKL, LCMScheduler, UNet2DConditionModel
 from huggingface_hub import hf_hub_download
+from PIL import Image
 from safetensors.torch import load_file
 from transformers import CLIPTextModel, CLIPTokenizer
 
@@ -53,7 +55,8 @@ def factorize(up: torch.Tensor, down: torch.Tensor, scale: float):
     return (qu @ u).float(), (scale * s).float(), (qd @ vh.T).T.float()
 
 
-def main() -> None:
+def load() -> SimpleNamespace:
+    """The base model, the factorized adapter, and closures to install part of it and to sample."""
     device = best_device()
     kw = dict(revision=BASE_REV, torch_dtype=torch.float32)
     unet = UNet2DConditionModel.from_pretrained(BASE, subfolder="unet", **kw).to(device).eval()
@@ -73,33 +76,13 @@ def main() -> None:
         parts[name] = factorize(up, down, float(raw[key]) / down.shape[0])
         pristine[name] = state[f"{name}.weight"].detach().cpu().clone()
 
-    # --- Anatomy: how the adapter's energy is spread, with no forward pass.
-    energy, base_norm, eff_rank, count = defaultdict(float), defaultdict(float), defaultdict(list), defaultdict(int)
-    for name, (_, s, _) in parts.items():
-        for group in (kind(name), name.split(".")[0], "all"):
-            energy[group] += float((s**2).sum())
-            base_norm[group] += float(pristine[name].pow(2).sum())
-            count[group] += 1
-        cumulative = torch.cumsum(s**2, 0) / (s**2).sum()
-        eff_rank[kind(name)].append(int((cumulative < 0.9).sum()) + 1)
-        eff_rank["all"].append(eff_rank[kind(name)][-1])
-    anatomy = {
-        g: {
-            "modules": count[g],
-            "energy_share": energy[g] / energy["all"],
-            "relative_norm": (energy[g] / base_norm[g]) ** 0.5,
-            **({"rank_for_90pct_energy_median": float(np.median(eff_rank[g]))} if g in eff_rank else {}),
-        }
-        for g in (*KINDS, *BLOCKS, "all")
-    }
-    for g, a in anatomy.items():
-        print(f"{g:12s} {a['modules']:3d} modules | energy share {a['energy_share']:.3f} | ||dW||/||W|| {a['relative_norm']:.4f} | rank90 {a.get('rank_for_90pct_energy_median', '')}", flush=True)
-
-    def install(keep, rank: int = 64) -> None:
+    def install(keep, rank: int = 64, pick=None) -> None:
+        """Add the delta where keep(name) holds: its top `rank` directions, or those pick(name, n) names."""
         for name, (u, s, vh) in parts.items():
             weight = pristine[name]
             if keep(name):
-                delta = (u[:, :rank] * s[:rank]) @ vh[:rank]
+                idx = pick(name, len(s)) if pick else torch.arange(min(rank, len(s)))
+                delta = (u[:, idx] * s[idx]) @ vh[idx]
                 weight = weight + delta.view_as(weight)
             state[f"{name}.weight"].copy_(weight.to(device))
 
@@ -125,25 +108,13 @@ def main() -> None:
             out.append(((x.clamp(-1, 1) + 1) * 127.5).round().permute(0, 2, 3, 1).byte().cpu().numpy())
         return np.concatenate(out)
 
-    arms = {"none": (lambda n: False, 64), "full": (lambda n: True, 64)}
-    for k in KINDS:
-        arms[f"only_{k}"] = (lambda n, k=k: kind(n) == k, 64)
-        arms[f"drop_{k}"] = (lambda n, k=k: kind(n) != k, 64)
-    for b in BLOCKS:
-        arms[f"only_{b}"] = (lambda n, b=b: n.split(".")[0] == b, 64)
-    for r in (32, 16, 8, 4):
-        arms[f"rank_{r}"] = (lambda n: True, r)
+    return SimpleNamespace(device=device, parts=parts, pristine=pristine, install=install, generate=generate, prompts=prompts)
 
-    evaluator = Evaluator(device)
-    images = {}
-    for name, (keep, rank) in arms.items():
-        install(keep, rank)
-        images[name] = generate()
-        print(f"generated {name}", flush=True)
-    install(lambda n: False)
 
-    full, none = images["full"], images["none"]
-    worst = evaluator.lpips(none, full)
+def score(evaluator: Evaluator, images: dict[str, np.ndarray], prompts: list[str]) -> dict[str, dict]:
+    """Closeness of each arm to the full adapter's same-seed images. Needs arms "full" and "none"."""
+    full = images["full"]
+    worst = evaluator.lpips(images["none"], full)
     results = {}
     for name, img in images.items():
         dist = evaluator.lpips(img, full)
@@ -156,17 +127,70 @@ def main() -> None:
             "texture_gap_db": float(texture.mean()),
             "signed_fine_deficit_db": float(deficit["fine"].mean()),
             "clip": float(evaluator.clip_similarity(img, prompts).mean()),
-            "weights_in_part": int(sum(pristine[n].numel() for n in parts if arms[name][0](n))),
         }
-        r = results[name]
-        print(f"{name:18s} LPIPS to full {r['lpips_to_full']:.3f} | recovery {r['recovery']:+.2f} | texture gap {r['texture_gap_db']:.2f} dB | clip {r['clip']:.3f}", flush=True)
+    return results
+
+
+def line(name: str, r: dict) -> str:
+    return f"{name:18s} LPIPS to full {r['lpips_to_full']:.3f} | recovery {r['recovery']:+.2f} | texture gap {r['texture_gap_db']:.2f} dB | clip {r['clip']:.3f}"
+
+
+def sheet(images: dict[str, np.ndarray], show: list[str], path, rows: int = 6) -> None:
+    """One row per prompt, one column per arm in `show`."""
+    grid = [np.concatenate([np.asarray(Image.fromarray(images[a][i]).resize((192, 192), Image.LANCZOS)) for a in show], axis=1) for i in range(rows)]
+    Image.fromarray(np.concatenate(grid, axis=0)).save(path)
+
+
+def main() -> None:
+    bench = load()
+    parts, pristine = bench.parts, bench.pristine
+
+    # --- Anatomy: how the adapter's energy is spread, with no forward pass.
+    energy, base_norm, eff_rank, count = defaultdict(float), defaultdict(float), defaultdict(list), defaultdict(int)
+    for name, (_, s, _) in parts.items():
+        for group in (kind(name), name.split(".")[0], "all"):
+            energy[group] += float((s**2).sum())
+            base_norm[group] += float(pristine[name].pow(2).sum())
+            count[group] += 1
+        cumulative = torch.cumsum(s**2, 0) / (s**2).sum()
+        eff_rank[kind(name)].append(int((cumulative < 0.9).sum()) + 1)
+        eff_rank["all"].append(eff_rank[kind(name)][-1])
+    anatomy = {
+        g: {
+            "modules": count[g],
+            "energy_share": energy[g] / energy["all"],
+            "relative_norm": (energy[g] / base_norm[g]) ** 0.5,
+            **({"rank_for_90pct_energy_median": float(np.median(eff_rank[g]))} if g in eff_rank else {}),
+        }
+        for g in (*KINDS, *BLOCKS, "all")
+    }
+    for g, a in anatomy.items():
+        print(f"{g:12s} {a['modules']:3d} modules | energy share {a['energy_share']:.3f} | ||dW||/||W|| {a['relative_norm']:.4f} | rank90 {a.get('rank_for_90pct_energy_median', '')}", flush=True)
+
+    arms = {"none": (lambda n: False, 64), "full": (lambda n: True, 64)}
+    for k in KINDS:
+        arms[f"only_{k}"] = (lambda n, k=k: kind(n) == k, 64)
+        arms[f"drop_{k}"] = (lambda n, k=k: kind(n) != k, 64)
+    for b in BLOCKS:
+        arms[f"only_{b}"] = (lambda n, b=b: n.split(".")[0] == b, 64)
+    for r in (32, 16, 8, 4):
+        arms[f"rank_{r}"] = (lambda n: True, r)
+
+    images = {}
+    for name, (keep, rank) in arms.items():
+        bench.install(keep, rank)
+        images[name] = bench.generate()
+        print(f"generated {name}", flush=True)
+    bench.install(lambda n: False)
+
+    results = score(Evaluator(bench.device), images, bench.prompts)
+    for name, r in results.items():
+        r["weights_in_part"] = int(sum(pristine[n].numel() for n in parts if arms[name][0](n)))
+        print(line(name, r), flush=True)
 
     out = config.RESULTS / "pilots"
-    from PIL import Image
-
     show = ["none", "only_time", "only_conv", "only_self_attn", "only_cross_attn", "rank_4", "rank_16", "full"]
-    rows = [np.concatenate([np.asarray(Image.fromarray(images[a][i]).resize((192, 192), Image.LANCZOS)) for a in show], axis=1) for i in range(6)]
-    Image.fromarray(np.concatenate(rows, axis=0)).save(out / "c_lora_anatomy.png")
+    sheet(images, show, out / "c_lora_anatomy.png")
     (out / "c_lora_anatomy.json").write_text(
         json.dumps({"base": BASE, "lora": LORA, "steps": STEPS, "n_prompts": N_PROMPTS, "sheet_columns": show, "anatomy": anatomy, "arms": results}, indent=1)
     )

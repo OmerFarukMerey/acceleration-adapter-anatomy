@@ -1,0 +1,171 @@
+{
+ "lora": "latent-consistency/lcm-lora-sdv1-5",
+ "steps": 4,
+ "n_prompts": 16,
+ "sheet_columns": [
+  "none",
+  "random_4_a",
+  "tail (5-64)",
+  "rank_1",
+  "rank_2",
+  "decoder_rank_4",
+  "rank_4",
+  "full"
+ ],
+ "arms": {
+  "none": {
+   "lpips_to_full": 0.9716066122055054,
+   "recovery": 0.0,
+   "recovery_ci": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "texture_gap_db": 26.38566781718639,
+   "signed_fine_deficit_db": 22.157636936833526,
+   "clip": 0.21779575943946838,
+   "energy_share": 0.0,
+   "lora_param_share": 0.0
+  },
+  "full": {
+   "lpips_to_full": 0.0,
+   "recovery": 1.0,
+   "recovery_ci": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "texture_gap_db": 0.0,
+   "signed_fine_deficit_db": 0.0,
+   "clip": 0.3204652667045593,
+   "energy_share": 1.0,
+   "lora_param_share": 1.0
+  },
+  "rank_4": {
+   "lpips_to_full": 0.04193917661905289,
+   "recovery": 0.9568352103233337,
+   "recovery_ci": {
+    "mean": 0.9572771191596985,
+    "lo": 0.9396048530936241,
+    "hi": 0.9703802943229676
+   },
+   "texture_gap_db": 0.4025113723791953,
+   "signed_fine_deficit_db": 0.2656698661426429,
+   "clip": 0.3203412592411041,
+   "energy_share": 0.9736068614833162,
+   "lora_param_share": 0.0625
+  },
+  "rank_2": {
+   "lpips_to_full": 0.07336592674255371,
+   "recovery": 0.9244900941848755,
+   "recovery_ci": {
+    "mean": 0.9240332841873169,
+    "lo": 0.8997413903474808,
+    "hi": 0.9462945282459259
+   },
+   "texture_gap_db": 0.4820989781548205,
+   "signed_fine_deficit_db": 0.2662347487939294,
+   "clip": 0.3199114501476288,
+   "energy_share": 0.9583211350451355,
+   "lora_param_share": 0.03125
+  },
+  "rank_1": {
+   "lpips_to_full": 0.12628623843193054,
+   "recovery": 0.870023250579834,
+   "recovery_ci": {
+    "mean": 0.8665155172348022,
+    "lo": 0.8339899003505706,
+    "hi": 0.8987684160470962
+   },
+   "texture_gap_db": 0.5342587672932474,
+   "signed_fine_deficit_db": 0.1545834444892853,
+   "clip": 0.3214210271835327,
+   "energy_share": 0.9388895713832675,
+   "lora_param_share": 0.015625
+  },
+  "next_4 (5-8)": {
+   "lpips_to_full": 0.9688528776168823,
+   "recovery": 0.0028342008590698242,
+   "recovery_ci": {
+    "mean": 0.0030282586812973022,
+    "lo": 0.0013599986210465433,
+    "hi": 0.004803801048547027
+   },
+   "texture_gap_db": 26.419936102603387,
+   "signed_fine_deficit_db": 22.136093693066332,
+   "clip": 0.21725228428840637,
+   "energy_share": 0.01142275938560219,
+   "lora_param_share": 0.0625
+  },
+  "tail (5-64)": {
+   "lpips_to_full": 0.9657833576202393,
+   "recovery": 0.0059934258460998535,
+   "recovery_ci": {
+    "mean": 0.006215456873178482,
+    "lo": 0.002470170892775059,
+    "hi": 0.010215485841035843
+   },
+   "texture_gap_db": 26.543108413630065,
+   "signed_fine_deficit_db": 22.188691330202147,
+   "clip": 0.214582622051239,
+   "energy_share": 0.026393130854293845,
+   "lora_param_share": 0.9375
+  },
+  "random_4_a": {
+   "lpips_to_full": 0.9549745321273804,
+   "recovery": 0.017118096351623535,
+   "recovery_ci": {
+    "mean": 0.01799984648823738,
+    "lo": 0.008721783384680748,
+    "hi": 0.02912332518026232
+   },
+   "texture_gap_db": 26.609572023696472,
+   "signed_fine_deficit_db": 22.25092388231767,
+   "clip": 0.21740227937698364,
+   "energy_share": 0.07881844933546679,
+   "lora_param_share": 0.0625
+  },
+  "random_4_b": {
+   "lpips_to_full": 0.9599560499191284,
+   "recovery": 0.011991024017333984,
+   "recovery_ci": {
+    "mean": 0.012906566262245178,
+    "lo": 0.0019168906845152382,
+    "hi": 0.024574135988950727
+   },
+   "texture_gap_db": 25.17933882259043,
+   "signed_fine_deficit_db": 20.604165404976683,
+   "clip": 0.21808406710624695,
+   "energy_share": 0.08342104976099811,
+   "lora_param_share": 0.0625
+  },
+  "decoder_rank_4": {
+   "lpips_to_full": 0.2526237964630127,
+   "recovery": 0.7399937510490417,
+   "recovery_ci": {
+    "mean": 0.7368675470352173,
+    "lo": 0.6790310025215149,
+    "hi": 0.7932467356324195
+   },
+   "texture_gap_db": 1.391867059782412,
+   "signed_fine_deficit_db": 0.6242597749236256,
+   "clip": 0.3212928771972656,
+   "energy_share": 0.7971789835162312,
+   "lora_param_share": 0.03715588647298861
+  },
+  "decoder_rank_1": {
+   "lpips_to_full": 0.26364225149154663,
+   "recovery": 0.7286533117294312,
+   "recovery_ci": {
+    "mean": 0.7228387594223022,
+    "lo": 0.6627990230917931,
+    "hi": 0.7809813633561135
+   },
+   "texture_gap_db": 1.43370325818558,
+   "signed_fine_deficit_db": 0.6377564931542272,
+   "clip": 0.3220134973526001,
+   "energy_share": 0.7689569388659054,
+   "lora_param_share": 0.009288971618247153
+  }
+ }
+}
