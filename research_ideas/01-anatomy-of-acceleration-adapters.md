@@ -1,5 +1,10 @@
 # Anatomy of acceleration adapters
 
+> **Superseded.** This is the idea as first written on 11 November 2026. The current plan is
+> in [proposal.md](proposal.md) and the current results are in
+> [`docs/RESULTS.md`](../docs/RESULTS.md). The rank-4 result below was later sharpened to
+> rank 1, and DMD2 has no adapter for Stable Diffusion 1.5.
+
 **Pitch.** Few-step distillation is shipped as a low-rank weight delta (LCM-LoRA, Hyper-SD,
 TCD, SDXL-Lightning, DMD2). Take those deltas apart in weight space and ask where the
 few-step ability actually lives. The pilot says: in very few directions, mostly in the

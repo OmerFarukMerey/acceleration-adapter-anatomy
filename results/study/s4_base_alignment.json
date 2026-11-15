@@ -1,0 +1,63 @@
+{
+ "fraction": 0.1,
+ "adapters": {
+  "lcm": "latent-consistency/lcm-lora-sdv1-5",
+  "tcd": "h1t/TCD-SD15-LoRA",
+  "pcm": "wangfuyun/PCM_Weights",
+  "hyper4": "ByteDance/Hyper-SD",
+  "flash": "jasperai/flash-sd",
+  "style_monet_a": "neonforestmist/sd15-monet-lora",
+  "style_pixel": "artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5"
+ },
+ "summary": {
+  "lcm": {
+   "out_share_top": 0.13990573111950294,
+   "in_share_top": 0.18808405036699827,
+   "in_share_in_row_space": 0.6995536280870753,
+   "out_max_cos": 0.1497404159141743,
+   "expected": 0.09996396243836922
+  },
+  "tcd": {
+   "out_share_top": 0.15900893883293377,
+   "in_share_top": 0.2193812408746223,
+   "in_share_in_row_space": 0.6947458436363549,
+   "out_max_cos": 0.16173552551458897,
+   "expected": 0.09995957670008637
+  },
+  "pcm": {
+   "out_share_top": 0.15516801828077886,
+   "in_share_top": 0.22673184407254976,
+   "in_share_in_row_space": 0.7173432589869899,
+   "out_max_cos": 0.1709554042711665,
+   "expected": 0.09997082174072194
+  },
+  "hyper4": {
+   "out_share_top": 0.1855722953026146,
+   "in_share_top": 0.31964887653771756,
+   "in_share_in_row_space": 0.747439088331205,
+   "out_max_cos": 0.16922731699060767,
+   "expected": 0.09995507007088283
+  },
+  "flash": {
+   "out_share_top": 0.16546464523634194,
+   "in_share_top": 0.20233718467825332,
+   "in_share_in_row_space": 0.9160333721667416,
+   "out_max_cos": 0.18300194080040197,
+   "expected": 0.09991129897846049
+  },
+  "style_monet_a": {
+   "out_share_top": 0.08558550334246527,
+   "in_share_top": 0.24686786326620386,
+   "in_share_in_row_space": 0.9282752725480773,
+   "out_max_cos": 0.09735026096227703,
+   "expected": 0.09994867588993953
+  },
+  "style_pixel": {
+   "out_share_top": 0.0962677373968561,
+   "in_share_top": 0.19419397420142082,
+   "in_share_in_row_space": 0.9197613975028213,
+   "out_max_cos": 0.11111665920744943,
+   "expected": 0.09994392008637625
+  }
+ }
+}

@@ -1,45 +1,55 @@
-# Project proposal: Do distillation methods find the same direction?
+# Project proposal: What do distillation methods agree on?
 
-**A weight-space comparison of few-step acceleration adapters for diffusion models**
+**Few-step ability in diffusion models as one shared, nearly constant shift per layer**
 
 | | |
 |---|---|
-| Author | Ömer Faruk Merey |
+| Authors | Ömer Faruk Merey and a second team member (name to be added) |
 | Course | Generative Models for Multimedia, METU |
-| Date | 15 November 2026 (second version; the first was dated 11 November) |
+| Date | 16 November 2026 (third version; earlier versions 11 and 15 November) |
 | Status | Draft for discussion with the course advisor |
 
-A plain-language walk-through of this plan is in [plan-explained.md](plan-explained.md).
-The background and related work are covered at more length in the
+Supporting documents: the [study results](../docs/RESULTS.md) behind every number here,
+a [plain-language walk-through](plan-explained.md), and the
 [literature review](../docs/LITERATURE_REVIEW.md).
 
 ## Summary
 
 Diffusion models can be distilled to sample in 4 steps, not 50, and the result is often
-shipped as a small weight delta (a LoRA) added to the base model. Several distillation
-methods exist, with different training objectives. I propose to test whether they end up
-making the same change to the model.
+shipped as a small weight change (a LoRA adapter) added to the base model. Several
+distillation methods exist, built on different training objectives. We ask what they have
+in common inside the model.
 
-A pilot makes this testable. In LCM-LoRA for Stable Diffusion 1.5, a single direction per
-layer carries the few-step ability: keeping one of 64 directions preserves 87% of the
-adapter's effect, and the other 63 together do nothing measurable. If other adapters
-are also close to one direction per layer, comparing two methods reduces to comparing
-one vector per layer.
+A first study on nine public adapters for Stable Diffusion 1.5, from five independent
+methods, gives three results:
+
+1. **Every adapter is close to one direction per layer.** One of 64 directions holds 93%
+   to 98% of each adapter's energy and keeps its prompt alignment.
+2. **The methods partly agree on that direction.** Between independent methods, the
+   directions have a cosine of 0.29 to 0.76. Random directions give 0.02, and style
+   adapters give 0.02 to 0.07.
+3. **The direction acts almost like a constant.** Replacing each layer's change with one
+   fixed vector added to its output, the same for every prompt and step, keeps the full
+   adapter's prompt alignment in four of the five methods.
+
+These are small-scale results: 16 prompts, one seed, one base model, and no image-quality
+metric yet. The proposal is to test them properly, explain them, and use them.
 
 ## Motivation
 
-Step distillation is the main route to fast diffusion sampling. LCM, TCD, Hyper-SD,
-SDXL-Lightning and DMD2 each train a student to do in a few steps what the teacher does in
-many. Their papers compare image quality. None compares what the trained students changed.
+Step distillation is the main route to fast diffusion sampling. LCM, TCD, PCM, Hyper-SD,
+Flash Diffusion, SDXL-Lightning and DMD2 each train a student to do in a few steps what
+the teacher does in many. Their papers compare image quality. We found none that compares
+what the trained students changed.
 
 Whether they changed the same thing matters:
 
-- **Understanding.** If methods with different objectives converge on one direction, that
-  direction is a property of the base model, not of the method.
-- **Cost.** A shared direction could be reused: found once, then transferred or fine-tuned
-  with very few parameters.
-- **Practice.** People already combine and shrink these adapters by trial and error. A
-  measured answer would replace folklore.
+- **Understanding.** If methods with different objectives converge on one change, that
+  change is a property of the base model, not of the method.
+- **Cost.** Distillation takes many GPU-hours. If the change is one known direction per
+  layer, most of that training may be unnecessary.
+- **Practice.** People already combine, shrink and re-scale these adapters by trial and
+  error. A measured account would replace folklore.
 
 ## Background
 
@@ -48,139 +58,116 @@ Whether they changed the same thing matters:
 - **Distillation.** A student copy of the model is trained to match the teacher's
   many-step result in a few steps.
 - **LoRA.** The student's weight change `ΔW` for a layer is stored as a product of two
-  thin matrices, so its rank is at most `r` (64 for LCM-LoRA).
+  thin matrices, so its rank is at most `r` (64 for most adapters here).
 - **Singular value decomposition.** `ΔW` splits into `r` independent directions, each
-  with an output side `u`, an input side `v` and a strength `s`. Keeping the strongest
-  `k` is the best rank-`k` approximation.
+  with an output side `u`, an input side `v` and a strength `s`. A rank-1 change adds
+  `s · u · (v · x)` to the layer's output for an input `x`.
 
 ## Research questions
 
-**Main question (RQ3 in the first version).** Do acceleration adapters trained with
-different distillation methods, on the same base model, change the model in the same
-direction?
+**Main question.** Is few-step ability one shared change to a diffusion model, whatever
+distillation method produced it; and if so, what is that change and can it be obtained
+without full distillation?
 
-Supporting questions:
-
-1. **Rank.** Is each adapter close to one direction per layer, as LCM-LoRA is?
-2. **Location.** Which blocks and layer types carry the ability, and is that the same
-   across adapters?
-3. **Use.** Can a single shared direction per layer, taken from one adapter or averaged
-   over several, give few-step sampling with a small fraction of the parameters?
+1. **Universality.** Do adapters from different methods, step counts and base models put
+   their effect in the same direction per layer?
+2. **Mechanism.** What does that direction do? Two candidates from the first study: a
+   nearly constant shift of each layer's output, and built-in guidance.
+3. **Use.** Can few-step sampling be had from the shared direction with only a few
+   numbers to fit, or from a per-layer constant, at a fraction of the training cost?
 
 ## Hypotheses
 
-Each is written so that it can fail. The thresholds are first guesses, to be fixed with
-the advisor before the comparison is run.
+Each can fail. "First study" is the 16-prompt result; "open" means untested.
 
-| | Hypothesis | Supported if | Rejected if |
+| | Hypothesis | Supported if | Status |
 |---|---|---|---|
-| P | Prerequisite: other adapters are also near rank 1 | Rank 1 keeps prompt alignment (CLIP within 0.01 of full) for at least 2 of 3 further adapters | Most adapters need many directions |
-| H1 | **Output directions agree across methods** | The top output direction of two adapters has a cosine far above the random baseline in most layers that carry energy | Cosines match the random baseline |
-| H2 | **The agreement is functional** | One adapter's top direction, scaled by the other's strength, still gives few-step sampling | Swapped directions fail |
-| H3 | Location agrees across adapters | The decoder holds most of the energy in at least 3 of 4 adapters | No consistent pattern |
-| H4 | A shared direction is usable | An average of top directions from several adapters keeps prompt alignment | The average fails where each adapter works |
+| U1 | Adapters are near rank 1 | Rank 1 keeps CLIP within 0.01 of the full adapter, and holds on a quality metric | First study: 5 of 5 methods on CLIP. Quality open |
+| U2 | Output directions agree across independent methods | Cosine far above the random and style-adapter references | First study: 0.29 to 0.76 against 0.02 to 0.07 |
+| U3 | The agreement holds on other base models | Same test on SDXL and one transformer model | Open; needs a GPU |
+| M1 | The direction acts as a constant per layer | A fixed vector per layer keeps prompt alignment and quality | First study: CLIP within 0.003 of full in 4 of 5 methods. Quality open |
+| M2 | The effect is mostly built-in guidance | The adapter's change to the output lines up with the guidance direction | First study: partly. Cosine 0.2 to 0.6 at the first step, falling later |
+| P1 | The shared direction is usable with few fitted numbers | The other methods' direction, re-scaled, matches the host adapter on quality | First study: with one global scale, CLIP reaches the host's level on 3 of 4 hosts. Quality open |
+| P2 | A per-layer constant can be trained directly | Training only one vector per layer reaches the quality of a full adapter | Open; needs a GPU |
 
-**If P fails,** the main question remains but needs a subspace comparison (principal
-angles on the top-`k` output subspaces) in place of a single cosine.
+**What would end the main claim:** U2 or M1 failing on a quality metric with thousands of
+prompts, or style adapters showing the same agreement on other base models.
 
-## Preliminary results
+## Results so far
 
-All on Stable Diffusion 1.5 with LCM-LoRA (278 layers, rank 64), 4 steps, no guidance, 16
-prompts, one seed per prompt. "Recovery" is 1 minus the LPIPS distance to the full
-adapter's same-seed image, divided by the distance of the base model with no adapter.
+Full tables, images and limits are in [`docs/RESULTS.md`](../docs/RESULTS.md).
 
-**Rank and controls** (15 November)
+| Adapter | Method family | Energy in top direction | Rank-1 recovery | CLIP: none / rank 1 / full |
+|---|---|---:|---:|---|
+| LCM-LoRA | Consistency | 94% | 0.87 | 0.218 / 0.321 / 0.320 |
+| TCD | Trajectory consistency | 98% | 0.93 | 0.260 / 0.328 / 0.330 |
+| PCM | Phased consistency, adversarial | 97% | 0.83 | 0.272 / 0.325 / 0.322 |
+| Hyper-SD 4-step | Segmented consistency, adversarial, preference | 96% | 0.62 | 0.272 / 0.316 / 0.322 |
+| Flash Diffusion | Distribution matching, adversarial | 93% | 0.79 | 0.218 / 0.337 / 0.335 |
 
-| Directions kept per layer | Share of adapter energy | Recovery | CLIP |
-|---|---:|---:|---:|
-| None (base model at 4 steps) | 0% | 0.00 | 0.218 |
-| All 64 | 100% | 1.00 | 0.320 |
-| Top 4 | 97% | 0.96 | 0.320 |
-| Top 2 | 96% | 0.92 | 0.320 |
-| **Top 1** | **94%** | **0.87** | **0.321** |
-| Directions 5 to 8 | 1% | 0.00 | 0.217 |
-| Directions 5 to 64 | 3% | 0.01 | 0.215 |
-| 4 random directions (two draws) | 8% | 0.01 - 0.02 | 0.217 - 0.218 |
-| Top 1, decoder only | 77% | 0.73 | 0.322 |
-
-**Location** (10 November)
-
-| Part kept | Recovery | | Layer type | Energy share | Kept alone | Removed |
-|---|---:|---|---|---:|---:|---:|
-| Decoder (up) blocks | 0.75 | | ResNet convolutions | 40% | 0.15 | 0.39 |
-| Encoder (down) blocks | 0.01 | | Feed-forward | 38% | 0.04 | 0.59 |
-| Middle block | 0.00 | | Attention projections | 7% | 0.04 | 0.76 |
-| | | | Self-attention | 7% | 0.02 | 0.82 |
-| | | | Cross-attention | 6% | 0.02 | 0.75 |
-| | | | Time-embedding projections | 1% | 0.00 | 0.94 |
-
-What this shows:
-
-- **One direction per layer carries the adapter.** The remaining 63 directions are not
-  merely weaker; alone they produce the same blur as no adapter.
-- **It is not redundancy.** Four random directions do nothing.
-- **A very small version works.** One direction in decoder layers only is 0.9% of the
-  adapter's parameters and keeps full prompt alignment, with a different composition.
-
-Limits: one adapter, 16 prompts, one seed, and a metric that measures closeness to the
-full adapter, not image quality. The "no adapter" baseline uses the LCM sampler without
-guidance, so the adapter's measured effect mixes step-skipping with built-in guidance.
-Code: `scripts/pilots/c_lora_anatomy.py` and `scripts/pilots/c2_lora_controls.py`.
+- **Agreement is specific to acceleration.** Three style adapters agree with the
+  acceleration adapters, and with each other, no more than random directions do.
+- **Agreement is not inherited.** Adapters from different methods share no starting
+  point: their weak directions overlap exactly as much as unrelated subspaces do.
+- **Swapping needs a scale.** One method's direction at another's strength gives
+  over-contrasted or soft images. With one global scale factor, the direction agreed by
+  the other methods reaches the host's prompt alignment on three of four hosts.
+- **The constant is prompt-independent.** One fixed vector per layer, estimated on half
+  of the prompts, works equally well on the other half.
 
 ## Method
 
-### Step 1: Check the prerequisite on more adapters
+### A. Universality
 
-Run the rank and location analysis on TCD-LoRA and the Hyper-SD LoRAs for SD 1.5. Hyper-SD
-ships 1, 2, 4 and 8-step versions, which also gives a same-method comparison.
+1. **Scale up the first study** on SD 1.5: 5,000 COCO captions, 3 seeds, all nine
+   adapters, with clean-FID, CLIP score and one preference metric.
+2. **Repeat on SDXL** (LCM-LoRA, SDXL-Lightning, DMD2, Hyper-SD, PCM) and on one
+   transformer model with public step-distillation adapters, such as FLUX.
+3. **Location.** Extend the block and layer-type ablation, done so far only on LCM-LoRA,
+   to every adapter. On a transformer, report by block depth.
+4. **Step count.** Hyper-SD's 1, 2, 4 and 8-step adapters share a starting point and
+   agree at 0.85 to 0.99. Test whether one direction with a step-dependent strength
+   covers all four.
 
-Before comparing, record for each adapter its rank, scale, and which layers it touches.
-Adapters that skip a layer type cannot be compared on it.
+### B. Mechanism
 
-### Step 2: Compare directions (the main experiment)
+1. **Constant shift.** Repeat the constant-per-layer test at scale. Separate what the
+   constant does from what the input-dependent remainder does, by layer type and step.
+2. **Where the constant comes from.** Test whether the per-layer vector can be predicted
+   from the base model alone, for example from the difference between its activations on
+   a 50-step path and on a 4-step path.
+3. **Guidance.** Compare with an adapter trained only to remove guidance, and with the
+   base model run with guidance, to separate step-skipping from built-in guidance.
+4. **Relation to the time path.** A constant per layer and step is close to what MTEO
+   trains (per-layer time embeddings). Test whether the two are the same change.
 
-For each layer that two adapters share:
+### C. Use
 
-- **Output-side agreement.** Absolute cosine between the two top output directions `u`.
-  Singular vectors have arbitrary sign, so the absolute value is used.
-- **Input-side agreement.** The same for the input directions `v`. Prior work suggests
-  this side depends on the random initialization, so low values here are expected.
-- **Baselines.** Random unit vectors of the same size; a style LoRA for the same base
-  model; and Hyper-SD versions against each other as the same-method reference.
+1. **Fit scales only.** Fix the shared direction and fit one strength per layer (278
+   numbers), then one per block, then one in total. Compare with the full adapters.
+2. **Train the constant.** Train one vector per layer with a standard distillation
+   objective, and compare cost and quality with a rank-64 adapter.
+3. **Transfer.** Apply a direction or constant found on the base model to fine-tuned
+   versions of it, as LCM-LoRA is used in practice.
 
-Report agreement per layer, weighted by energy, and by block and layer type.
+### Controls used throughout
 
-### Step 3: Test function
+- **Random directions** of the same size, for every truncation, swap and cosine.
+- **Style adapters** on the same base model, to separate "distillation" from "LoRA".
+- **Same-method references**: Hyper-SD at different step counts, and two PCM versions.
+- **A starting-point check** on every new pair of adapters before calling it independent.
+- **Held-out prompts** for anything estimated from data, and 3 seeds with intervals.
+- **A guided baseline** (base model with guidance at the same step count).
 
-Weight-space agreement can mislead, so each claim gets a functional test:
+## Division of work
 
-- **Swap.** Install adapter A's top direction with adapter B's strength, and the reverse.
-- **Project.** Keep only the part of A that lies along B's top direction.
-- **Average.** Install the mean of the top directions of several adapters.
+| Person | Takes | First task |
+|---|---|---|
+| A | Universality: scale-up, SDXL, transformer model, quality metrics | Build the 5,000-caption evaluation and rerun the SD 1.5 study on it |
+| B | Mechanism and use: constant shift, guidance, scale fitting, training | Rerun the constant-shift test by layer type; set up scale fitting |
 
-### Step 4: Measure quality
-
-Evaluate the full, rank-1, swapped and averaged adapters on at least 5,000 COCO captions
-with clean-FID, CLIP score and one preference metric, with 3 seeds. Add a baseline with
-guidance and a standard sampler, to separate step-skipping from built-in guidance.
-
-### Step 5: Scale up (needs a GPU)
-
-Repeat steps 1 to 3 on SDXL (LCM-LoRA, SDXL-Lightning, DMD2, Hyper-SD) and on one
-transformer model with public acceleration LoRAs, such as FLUX. A transformer has no
-encoder and decoder, so location is reported by block depth.
-
-### Step 6 (stretch): Train the direction
-
-Train a rank-1 adapter directly and compare it with the truncated one.
-
-## Controls
-
-- **Random directions** of the same count, for every truncation and every cosine.
-- **A non-acceleration LoRA** on the same base model, to separate "distillation" from
-  "LoRA in general".
-- **Same method, different setting** (Hyper-SD step counts) as the upper reference.
-- **Seeds:** 3 per prompt, with intervals.
+Both read WaDi, the intruder-dimensions paper and MTEO in the first week, and fix the
+thresholds above with the advisor.
 
 ## Timeline
 
@@ -188,86 +175,79 @@ Assumes the term ends in mid-January 2027.
 
 | Weeks | Dates | Work | Output |
 |---|---|---|---|
-| 1 | 15-22 Nov | Read LoRA, LCM-LoRA, WaDi, the intruder-dimensions paper. Fix thresholds | Fixed hypotheses |
-| 2 | 23 Nov - 1 Dec | Step 1 on TCD and Hyper-SD | Prerequisite answered |
-| 3-4 | 2-15 Dec | Steps 2 and 3 on SD 1.5 | Main result |
-| 5-6 | 16-29 Dec | Step 4; step 5 on SDXL if a GPU is available | Quality table |
-| 7-8 | 30 Dec - 12 Jan | Write the term report | Report and presentation |
-| After | Feb - Apr | Step 5 on a transformer model; step 6 | Submission draft |
+| 1 | 16-22 Nov | Reading; reproduce the first study; fix thresholds | Fixed hypotheses |
+| 2-3 | 23 Nov - 6 Dec | A1 (evaluation at scale); B1 (constant shift by layer and step) | Quality table for SD 1.5 |
+| 4-5 | 7-20 Dec | A3, A4; B2, B3; C1 | Mechanism results; scale-fitting result |
+| 6 | 21-27 Dec | A2 on SDXL if a GPU is available | Second base model |
+| 7-8 | 28 Dec - 12 Jan | Write the term report | Report and presentation |
+| After | Jan - Apr | Transformer model; C2 and C3; paper draft | Submission |
 
-**Decision point, 1 December.** If the other adapters are not near rank 1, the comparison
-switches to subspaces and the paper plan is reviewed with the advisor.
+**Decision point, 6 December.** If rank 1, cross-method agreement or the constant shift
+fails on the quality metrics at scale, the claim is narrowed to what survives and the
+paper plan is reviewed with the advisor.
 
 ## Resources
 
-- **Available:** an Apple M4 Pro laptop with 24 GB. Steps 1 to 3 on SD 1.5 fit; one arm of
-  16 images takes under a minute.
-- **Needed:** a GPU with 24 GB or more for SDXL, a transformer model, and step 4 at scale.
-- **Software:** PyTorch, diffusers, and the harness in this repository. All models and
-  adapters are public.
+- **Available:** an Apple M4 Pro laptop with 24 GB. The first study ran on it in about
+  two hours. One arm of 16 images takes under a minute.
+- **Needed:** a GPU with 24 GB or more for 5,000-caption evaluation with several arms and
+  seeds, for SDXL and a transformer model, and for any training.
+- **Software:** PyTorch, diffusers, and the code in `scripts/study/`. All models and
+  adapters are public; Flash Diffusion's licence is non-commercial.
 
 ## Risks
 
 | Risk | Likelihood | Response |
 |---|---|---|
-| Other adapters are not near rank 1 | Unknown | Decision point; fall back to subspace comparison |
-| Directions do not agree across methods | Unknown | A clean negative result is still a term report, and says methods find different solutions |
-| Agreement is trivial, because every LoRA on this model shares that direction | Medium | The style-LoRA control tests exactly this |
-| Rank 1 is an artifact of how LCM-LoRA was trained | Medium | Step 1, and the intruder-dimensions literature |
-| "LoRA ranks can be cut" is seen as known | High | It is known. The claim rests on the cross-method comparison, not on truncation |
-| Results on SD 1.5 and SDXL look dated | High | Step 5 on a transformer model |
-| No GPU access | Unknown | Steps 1 to 3 on SD 1.5 still make a complete term report |
+| Results weaken on a quality metric with thousands of prompts | Medium | Decision point; report what survives |
+| The constant shift is already known under another name | Medium | Search before writing: bias-only tuning (BitFit, DiffFit), MTEO, exposure-bias corrections |
+| Agreement comes from shared training data, not from the task | Medium | Cannot be ruled out with public adapters; state it, and test with our own training in C2 |
+| The effect is mostly built-in guidance | Medium | B3; the first study says partly |
+| Results on SD 1.5 look dated | High | SDXL and a transformer model |
+| "LoRA ranks can be cut" is seen as known | High | It is known. The claims are agreement, mechanism and use |
+| No GPU access | Unknown | SD 1.5 work at reduced scale still makes a complete term report |
 
 ## Expected outcomes
 
-- **Minimum (term report):** rank and location for three SD 1.5 adapters, the direction
-  comparison with controls, and functional tests.
-- **Target (workshop paper):** the above with a quality table and SDXL.
-- **Stretch (conference paper):** a transformer model and a directly trained rank-1
-  adapter. Candidate venues are ICCV 2027 and NeurIPS 2027; deadlines are not announced.
+- **Minimum (term report):** the SD 1.5 study at scale with quality metrics, the
+  mechanism tests, and scale fitting.
+- **Target (conference paper):** the above on SDXL and a transformer model, plus a
+  directly trained per-layer constant. Candidate venues are ICCV 2027 and NeurIPS 2027;
+  their deadlines are not yet announced.
 
 ## Related work
 
-Entries marked * were read in full or in large part by an automated reader on 15 November
-2026; I have not yet read them myself. The rest are known from abstracts or summaries.
+Covered at length in the [literature review](../docs/LITERATURE_REVIEW.md). The closest
+papers, none yet read in full by us:
 
-- **Weights of distilled models.** WaDi* (Wang et al., CVPR 2026,
-  [2603.08258](https://arxiv.org/abs/2603.08258)) compares full distilled checkpoints with
-  their teachers and finds direction changes about 22 times larger than norm changes. It
-  does not study LoRA adapters, break results down by block or layer type, or compare
-  methods. Its own one-step adapter works best at rank 256, which contrasts with the
-  rank-1 result here.
-- **Shared subspaces.** EigenLoRAx ([2502.04700](https://arxiv.org/abs/2502.04700)) and
-  the Universal Weight Subspace Hypothesis* ([2512.05117](https://arxiv.org/abs/2512.05117))
-  find shared directions across many LoRAs. The diffusion part covers SDXL style LoRAs
-  only, with no acceleration adapters and no random-subspace control.
-- **What LoRA directions mean.** Shuttleworth et al.
-  ([2410.21228](https://arxiv.org/abs/2410.21228)) show LoRA adds dominant "intruder"
-  directions that full fine-tuning does not.
-- **Low-rank acceleration adapters in practice.** Step-distillation LoRAs for the Wan
-  video models are published at ranks from 4 to 256.
-- **Other routes to few steps.** MTEO* ([2603.22375](https://arxiv.org/abs/2603.22375))
-  trains only per-layer time embeddings. Here the time layers carry 1% of the energy.
-- **Block-level LoRA analysis.** B-LoRA ([2403.14572](https://arxiv.org/abs/2403.14572)).
-- **Distillation methods.** LCM-LoRA ([2311.05556](https://arxiv.org/abs/2311.05556)); TCD
-  ([2402.19159](https://arxiv.org/abs/2402.19159)); Hyper-SD
-  ([2404.13686](https://arxiv.org/abs/2404.13686)); DMD2
-  ([2405.14867](https://arxiv.org/abs/2405.14867)); SDXL-Lightning
-  ([2402.13929](https://arxiv.org/abs/2402.13929)).
+- **WaDi** ([2603.08258](https://arxiv.org/abs/2603.08258)) compares fully distilled
+  checkpoints with their teachers; no adapters, no cross-method comparison.
+- **MTEO** ([2603.22375](https://arxiv.org/abs/2603.22375)) trains per-layer time
+  embeddings for few-step sampling, which a per-layer constant may explain.
+- **The Universal Weight Subspace Hypothesis**
+  ([2512.05117](https://arxiv.org/abs/2512.05117)) claims shared subspaces across style
+  adapters. In our data, style adapters do not share output directions.
+- **Intruder dimensions** ([2410.21228](https://arxiv.org/abs/2410.21228)): LoRA adds new
+  dominant directions. Ours are new in this sense, and still agree across methods.
+- **CASA** ([2605.01929](https://arxiv.org/abs/2605.01929)) studies why style adapters
+  fail on step-distilled video models, from singular-value spectra.
 
-## Changes from the first version
+Searches on 15 and 16 November found no paper that compares acceleration adapters across
+methods, reports rank 1 for them, or reduces them to a per-layer constant. That is a
+handful of searches, not proof.
 
-- The main question is now the cross-method comparison; rank and location support it.
-- The pilot result is stronger: rank 1, with random-direction and tail controls.
-- The adapter list is corrected. A search found a DMD2 LoRA for SDXL only, so DMD2 moves
-  to the SDXL step.
-- The comparison uses output-side directions and functional tests, because input-side
-  directions of LoRAs are reported to depend on initialization.
+## Changes from the second version
+
+- The prerequisite and the main hypothesis of the second version were tested and held at
+  small scale, so the plan moves on to explaining and using the result.
+- Two questions are added: mechanism and use.
+- The adapter set grew from one to nine, with three style adapters as controls.
+- The work is split between two people.
 
 ## Relation to the original course proposal
 
 The original proposal asked whether an LLM could find and edit the denoiser weights behind
-a few-step failure. I tested that first; the write-up is in
+a few-step failure. That was tested first; the write-up is in
 [`docs/EXPERIMENT_1.md`](../docs/EXPERIMENT_1.md). The LLM agents rediscovered published
 sampler corrections and a blind search matched them, so the advisor's doubt was justified.
 This proposal keeps the weight-space question and drops the LLM.

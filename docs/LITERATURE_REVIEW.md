@@ -1,10 +1,12 @@
 # Literature review
 
-**Do distillation methods find the same direction?** Background and related work for the
-[project proposal](../research_ideas/proposal.md). Written 15 November 2026.
+**What do distillation methods agree on?** Background and related work for the
+[project proposal](../research_ideas/proposal.md). Written 15 November 2026; updated 16
+November with what the [first study](RESULTS.md) found.
 
 The project asks whether few-step "acceleration" adapters trained with different
-distillation methods change a diffusion model in the same direction. This review covers
+distillation methods make the same change to a diffusion model, what that change is, and
+whether it can be had without full distillation. This review covers
 the work that question rests on, the work closest to it, and what is still open. A
 plain-language introduction to the same ideas is in
 [plan-explained.md](../research_ideas/plan-explained.md); a reading order is in the
@@ -127,7 +129,10 @@ Later work adds three cautions:
 - **The two sides of a LoRA behave differently.** A 2026 preprint
   ([2606.23740](https://arxiv.org/abs/2606.23740) [S]) reports that across random seeds
   the output-side directions agree almost perfectly (0.99) and the input-side directions
-  do not (0.07). This is why the proposal compares output directions first.
+  do not (0.07). Our first study compares both sides. Across independent acceleration
+  methods both agree (output 0.29 to 0.76, input 0.33 to 0.69). Across style adapters
+  only the input side shows any agreement (0.14 to 0.43), so the output side is the one
+  that separates acceleration from other tasks.
 - **Truncating a LoRA is known.** Compress then Serve
   ([2407.00066](https://arxiv.org/abs/2407.00066) [S]) compresses adapters by per-adapter
   SVD and by a shared basis. Step-distillation LoRAs for the Wan video models are
@@ -167,9 +172,9 @@ rank 256.
 | | WaDi | This project |
 |---|---|---|
 | Object studied | Full distilled checkpoints | Published LoRA adapters |
-| Methods compared | One per base model | Several on one base model |
+| Methods compared | One per base model | Five on one base model |
 | Breakdown by block or layer type | No | Yes |
-| Rank result | 30% of rank for 93% | 1 of 64 directions for 87% |
+| Rank result | 30% of rank for 93% | 1 of 64 directions keeps prompt alignment, in five methods |
 | Best rank for its own adapter | 256 | Not yet trained |
 
 The rank results point in different directions, and the difference needs an explanation.
@@ -181,6 +186,12 @@ training only per-step, per-layer time embeddings on a frozen backbone. It conta
 adapter analysis. It sits in tension with our pilot, where the time-embedding projections
 hold 1% of LCM-LoRA's energy and recover nothing alone. Both can be true: the time path
 may be a sufficient route that LoRA distillation does not take.
+
+The first study suggests a closer link. In all five methods, the adapter's main direction
+can be replaced by a fixed vector added to each layer's output, and a vector per layer and
+step does better still. A learned time embedding per layer is one way to supply exactly
+that: a step-dependent constant. Whether MTEO's embeddings and our constants are the same
+change is an open question in the proposal.
 
 **B-LoRA** (Frenkel et al., ECCV 2024, [2403.14572](https://arxiv.org/abs/2403.14572)
 [S]) is the precedent for block-level analysis. It finds that two specific SDXL blocks
@@ -198,6 +209,28 @@ read it for what distillation changes in model behaviour.
 A targeted search found no paper that ablates which layers matter inside a few-step
 distillation LoRA [S]. That is a small number of searches, not proof.
 
+### Changes that do not depend on the input
+
+The first study found that the adapters act almost like a constant added to each layer.
+Three lines of work are close to that and must be read before claiming it:
+
+- **Bias-only tuning.** BitFit (Ben Zaken et al., [2106.10199](https://arxiv.org/abs/2106.10199)
+  [M]) fine-tunes only bias terms in language models. DiffFit (Xie et al.,
+  [2304.06648](https://arxiv.org/abs/2304.06648) [M]) extends it to diffusion
+  transformers with added scale factors. Both are for adapting to new data, not for
+  few-step sampling; a search found neither applied to step distillation [S].
+- **Rank-one adapters.** 1LoRA (Quercia et al., WACV 2026 [S]) proposes a rank-one
+  adapter and reports it competitive with LoRA. Known from a supplement snippet only.
+- **Exposure-bias corrections** (section 2) shift or rescale the network's prediction by
+  amounts that depend only on the step. Our constants live inside the network, per layer,
+  but the idea is related.
+
+**CASA** (Wang et al., ICML 2026, [2605.01929](https://arxiv.org/abs/2605.01929) [S])
+studies why style adapters fail on step-distilled video models. It reports that
+distillation and LoRA both leave the singular values of the weights nearly unchanged and
+act by rotating singular subspaces. That fits WaDi's finding and ours (new directions,
+small in norm). It does not compare distillation methods with each other.
+
 ## 7. Do separately trained networks find the same solution?
 
 The main question is an instance of an older one.
@@ -212,6 +245,12 @@ The main question is an instance of an older one.
   score, with no acceleration adapters and no random-subspace control. "Share"
   ([2602.06043](https://arxiv.org/abs/2602.06043) [S]) applies the idea to continual
   learning.
+- **What our data says.** The three style adapters in the first study do not share
+  output directions with each other (0.02 to 0.03, the random value), including two
+  trained on the same painter. That is three adapters against the paper's hundreds, and
+  top directions against its 16-component subspaces, so it does not contradict the paper;
+  it does show that the strong agreement among acceleration adapters is not something
+  every LoRA on this model has.
 - **Consequence for this project.** "Adapters share a subspace" is already claimed in
   general. Our claim has to be narrower and better controlled: adapters that differ by
   *distillation objective*, compared against random directions and against a style LoRA,
@@ -264,28 +303,33 @@ proposal adds clean-FID and one preference metric on at least 5,000 prompts.
 
 ## 10. The gap
 
-Putting the sections together:
+Putting the sections together, with what the first study adds:
 
-| Question | Status in the literature |
-|---|---|
-| Can few-step ability be stored as a low-rank adapter? | Yes: LCM-LoRA and successors |
-| Can LoRAs be truncated? | Yes: known in research and in community practice |
-| How do distilled weights differ from the teacher's? | WaDi, for full checkpoints, one method per model |
-| Which blocks and layer types carry acceleration? | No paper found |
-| Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control |
-| **Do adapters from different distillation methods share directions?** | **No paper found** |
-| **Is any such agreement specific to distillation, and functional?** | **No paper found** |
+| Question | Status in the literature | First study (16 prompts, SD 1.5) |
+|---|---|---|
+| Can few-step ability be stored as a low-rank adapter? | Yes: LCM-LoRA and successors | |
+| Can LoRAs be truncated? | Yes: known in research and in community practice | Down to rank 1, in five methods |
+| How do distilled weights differ from the teacher's? | WaDi, for full checkpoints, one method per model | New directions, not the base model's dominant ones |
+| Which blocks and layer types carry acceleration? | No paper found | Decoder holds 80% to 94% of energy in nine adapters |
+| Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control | Style adapters: no shared output direction |
+| **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random** |
+| **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: after re-scaling** |
+| **What does the shared direction do?** | **No paper found; MTEO and bias tuning are adjacent** | **Close to a constant per layer; partly guidance** |
 
-The project's contribution, if the experiments support it, is the last two rows, with the
-block and layer breakdown as supporting evidence.
+The project's contribution, if it survives larger tests, is the last three rows.
 
-Three results from this review could undercut it, and each has a control in the proposal:
+Results from this review that could undercut it, and the control for each:
 
 1. Agreement that is generic to LoRAs on this base model (sections 4 and 7): the
-   style-LoRA control.
-2. A rank-1 structure that is an artifact of LoRA training (section 4): the comparison
-   with WaDi's full-checkpoint results, and more adapters.
-3. An effect that is mostly built-in guidance (section 3): the guided baseline.
+   style-adapter control. Passed in the first study.
+2. Agreement inherited from a shared starting point: the weak-direction check. Passed for
+   all pairs of different methods.
+3. A rank-1 structure that is an artifact of LoRA training (section 4): comparison with
+   fully distilled checkpoints, as in WaDi. Not yet done.
+4. An effect that is mostly built-in guidance (section 3): partly true at the first step;
+   a guided baseline at scale is still needed.
+5. A constant-shift result that is already known (section 6): needs a careful search.
+6. Agreement that comes from shared training data: cannot be settled with public adapters.
 
 ## What to read first
 
@@ -293,4 +337,5 @@ Three results from this review could undercut it, and each has a control in the 
 2. WaDi in full. It decides the positioning.
 3. The intruder-dimensions paper.
 4. The Universal Weight Subspace Hypothesis and EigenLoRAx.
-5. TCD and Hyper-SD, before running their adapters.
+5. MTEO, BitFit and DiffFit, for the constant-shift result.
+6. TCD, PCM, Hyper-SD and Flash Diffusion, for how each adapter was trained.

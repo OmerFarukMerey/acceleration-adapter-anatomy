@@ -4,6 +4,11 @@ A deeper explanation of [the idea](01-anatomy-of-acceleration-adapters.md): the 
 you need, what the pilot showed, what the paper would claim, and what to read. Written
 2026-11-11.
 
+> **Updated 16 November 2026.** The sections "The idea" and "Where to start" describe the
+> first version of the plan. The reading tables are current. For the current plan see
+> [proposal.md](proposal.md); for results, [`docs/RESULTS.md`](../docs/RESULTS.md); for
+> the literature in context, [`docs/LITERATURE_REVIEW.md`](../docs/LITERATURE_REVIEW.md).
+
 **Check every citation before you use it.** The arXiv numbers for older papers were written
 from memory. The 2026 papers came from an automated literature search and were not read by
 the author of this guide. Open each link first.

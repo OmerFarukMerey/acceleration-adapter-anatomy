@@ -1,5 +1,8 @@
 # Pilot experiments
 
+These are the pilots of 10 to 15 November 2026. The cross-method study that followed is
+described in [`docs/RESULTS.md`](../docs/RESULTS.md), with code in `scripts/study/`.
+
 Run on 2026-11-10 on an Apple M4 Pro (24 GB, MPS). Pilots A, B and D use `segmind/tiny-sd`
 with DDIM and guidance 7.5, measured against the same-seed 50-step image. Pilot C uses
 Stable Diffusion 1.5 with LCM-LoRA.

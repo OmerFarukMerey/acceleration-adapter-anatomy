@@ -1,0 +1,742 @@
+{
+ "steps": 4,
+ "n_prompts": 16,
+ "seeds": 1,
+ "hosts": [
+  "lcm",
+  "tcd",
+  "pcm",
+  "hyper4",
+  "flash"
+ ],
+ "reference": {
+  "base_50_steps_guided": {
+   "clip": 0.3364342749118805
+  },
+  "base_4_steps_guided": {
+   "clip": 0.3213728666305542
+  }
+ },
+ "arms": {
+  "lcm": {
+   "none": {
+    "lpips_to_full": 0.9716066122055054,
+    "recovery": 0.0,
+    "recovery_ci": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "texture_gap_db": 26.38566781718639,
+    "signed_fine_deficit_db": 22.157636936833526,
+    "clip": 0.21779575943946838,
+    "layers_changed": 0
+   },
+   "full": {
+    "lpips_to_full": 0.0,
+    "recovery": 1.0,
+    "recovery_ci": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0
+    },
+    "texture_gap_db": 0.0,
+    "signed_fine_deficit_db": 0.0,
+    "clip": 0.3204652667045593,
+    "layers_changed": 278
+   },
+   "rank_1": {
+    "lpips_to_full": 0.12628623843193054,
+    "recovery": 0.870023250579834,
+    "recovery_ci": {
+     "mean": 0.8665155172348022,
+     "lo": 0.8339899003505706,
+     "hi": 0.8987684160470962
+    },
+    "texture_gap_db": 0.5342587672932474,
+    "signed_fine_deficit_db": 0.1545834444892853,
+    "clip": 0.3214210271835327,
+    "layers_changed": 278
+   },
+   "tail": {
+    "lpips_to_full": 0.9610582590103149,
+    "recovery": 0.01085662841796875,
+    "recovery_ci": {
+     "mean": 0.011847473680973053,
+     "lo": 0.0034749365411698824,
+     "hi": 0.021406630426645278
+    },
+    "texture_gap_db": 26.21991126985226,
+    "signed_fine_deficit_db": 21.809211981525504,
+    "clip": 0.21715427935123444,
+    "layers_changed": 278
+   },
+   "random": {
+    "lpips_to_full": 0.9721283316612244,
+    "recovery": -0.0005369186401367188,
+    "recovery_ci": {
+     "mean": -0.00043429434299468994,
+     "lo": -0.0009604652412235736,
+     "hi": 8.17778520286082e-05
+    },
+    "texture_gap_db": 26.320450545208743,
+    "signed_fine_deficit_db": 22.10710926023798,
+    "clip": 0.2187788039445877,
+    "layers_changed": 278
+   },
+   "consensus": {
+    "lpips_to_full": 0.6307597756385803,
+    "recovery": 0.35080742835998535,
+    "recovery_ci": {
+     "mean": 0.3502199649810791,
+     "lo": 0.28188652023673055,
+     "hi": 0.41616738885641097
+    },
+    "texture_gap_db": 13.628597996586876,
+    "signed_fine_deficit_db": 13.065977570910132,
+    "clip": 0.2960987985134125,
+    "layers_changed": 278
+   },
+   "swap_tcd": {
+    "lpips_to_full": 0.6104893088340759,
+    "recovery": 0.37167030572891235,
+    "recovery_ci": {
+     "mean": 0.3703101873397827,
+     "lo": 0.2958318553864956,
+     "hi": 0.4423890829086303
+    },
+    "texture_gap_db": 13.287383473731042,
+    "signed_fine_deficit_db": 12.498402797488026,
+    "clip": 0.2924356162548065,
+    "layers_changed": 278
+   },
+   "swap_pcm": {
+    "lpips_to_full": 0.8683459758758545,
+    "recovery": 0.10627824068069458,
+    "recovery_ci": {
+     "mean": 0.10885767638683319,
+     "lo": 0.06676977053284645,
+     "hi": 0.1565956898033619
+    },
+    "texture_gap_db": 22.601058506811555,
+    "signed_fine_deficit_db": 19.08903744686458,
+    "clip": 0.25700896978378296,
+    "layers_changed": 278
+   },
+   "swap_hyper4": {
+    "lpips_to_full": 0.8823738098144531,
+    "recovery": 0.09184044599533081,
+    "recovery_ci": {
+     "mean": 0.0918748527765274,
+     "lo": 0.058800754509866236,
+     "hi": 0.1273998863995075
+    },
+    "texture_gap_db": 23.9853812943346,
+    "signed_fine_deficit_db": 20.88455844580571,
+    "clip": 0.24861805140972137,
+    "layers_changed": 278
+   },
+   "swap_flash": {
+    "lpips_to_full": 0.9609729051589966,
+    "recovery": 0.010944485664367676,
+    "recovery_ci": {
+     "mean": 0.011444613337516785,
+     "lo": 0.005778811220079661,
+     "hi": 0.017548980750143526
+    },
+    "texture_gap_db": 26.359987770039677,
+    "signed_fine_deficit_db": 21.839313948568922,
+    "clip": 0.22027020156383514,
+    "layers_changed": 128
+   },
+   "sheet_columns": [
+    "none",
+    "random",
+    "tail",
+    "rank_1",
+    "consensus",
+    "swap_tcd",
+    "swap_pcm",
+    "swap_hyper4",
+    "swap_flash",
+    "full"
+   ]
+  },
+  "tcd": {
+   "none": {
+    "lpips_to_full": 0.9221996068954468,
+    "recovery": 0.0,
+    "recovery_ci": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "texture_gap_db": 19.665675463745668,
+    "signed_fine_deficit_db": 18.269374229000874,
+    "clip": 0.25986433029174805,
+    "layers_changed": 0
+   },
+   "full": {
+    "lpips_to_full": 0.0,
+    "recovery": 1.0,
+    "recovery_ci": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0
+    },
+    "texture_gap_db": 0.0,
+    "signed_fine_deficit_db": 0.0,
+    "clip": 0.3295036554336548,
+    "layers_changed": 278
+   },
+   "rank_1": {
+    "lpips_to_full": 0.06469248980283737,
+    "recovery": 0.9298498034477234,
+    "recovery_ci": {
+     "mean": 0.9303502440452576,
+     "lo": 0.8915951400995255,
+     "hi": 0.962113943696022
+    },
+    "texture_gap_db": 0.48084289109654454,
+    "signed_fine_deficit_db": 0.46759240378295863,
+    "clip": 0.3280341327190399,
+    "layers_changed": 278
+   },
+   "tail": {
+    "lpips_to_full": 0.8940640687942505,
+    "recovery": 0.03050917387008667,
+    "recovery_ci": {
+     "mean": 0.030970219522714615,
+     "lo": 0.02491207355633378,
+     "hi": 0.03687006495893001
+    },
+    "texture_gap_db": 18.710027239157636,
+    "signed_fine_deficit_db": 17.45945832459696,
+    "clip": 0.2628900408744812,
+    "layers_changed": 278
+   },
+   "random": {
+    "lpips_to_full": 0.9192192554473877,
+    "recovery": 0.0032317638397216797,
+    "recovery_ci": {
+     "mean": 0.003215968608856201,
+     "lo": 0.002331586740911007,
+     "hi": 0.004124211333692074
+    },
+    "texture_gap_db": 19.52772698078094,
+    "signed_fine_deficit_db": 18.1678621683742,
+    "clip": 0.2600513696670532,
+    "layers_changed": 278
+   },
+   "consensus": {
+    "lpips_to_full": 0.3673200309276581,
+    "recovery": 0.6016913652420044,
+    "recovery_ci": {
+     "mean": 0.5895940065383911,
+     "lo": 0.5187751442193985,
+     "hi": 0.653935270011425
+    },
+    "texture_gap_db": 2.4258377510028395,
+    "signed_fine_deficit_db": -1.174172630091431,
+    "clip": 0.3264894485473633,
+    "layers_changed": 278
+   },
+   "swap_lcm": {
+    "lpips_to_full": 0.5578879117965698,
+    "recovery": 0.3950464725494385,
+    "recovery_ci": {
+     "mean": 0.38056275248527527,
+     "lo": 0.29817246571183204,
+     "hi": 0.4458103634417057
+    },
+    "texture_gap_db": 5.87345189690801,
+    "signed_fine_deficit_db": -4.60041080052113,
+    "clip": 0.29925596714019775,
+    "layers_changed": 278
+   },
+   "swap_pcm": {
+    "lpips_to_full": 0.5849175453186035,
+    "recovery": 0.3657364845275879,
+    "recovery_ci": {
+     "mean": 0.36480411887168884,
+     "lo": 0.3096761845052242,
+     "hi": 0.42284342199563973
+    },
+    "texture_gap_db": 11.521192271833153,
+    "signed_fine_deficit_db": 11.810030327820021,
+    "clip": 0.3237062990665436,
+    "layers_changed": 278
+   },
+   "swap_hyper4": {
+    "lpips_to_full": 0.6405217051506042,
+    "recovery": 0.30544137954711914,
+    "recovery_ci": {
+     "mean": 0.3008655607700348,
+     "lo": 0.23737292923033237,
+     "hi": 0.36822942197322844
+    },
+    "texture_gap_db": 12.57563461843133,
+    "signed_fine_deficit_db": 13.136999936238702,
+    "clip": 0.3189077377319336,
+    "layers_changed": 278
+   },
+   "swap_flash": {
+    "lpips_to_full": 0.8436185121536255,
+    "recovery": 0.08521050214767456,
+    "recovery_ci": {
+     "mean": 0.08566254377365112,
+     "lo": 0.06894331965595484,
+     "hi": 0.10243286453187465
+    },
+    "texture_gap_db": 17.125509259022497,
+    "signed_fine_deficit_db": 16.295522798243898,
+    "clip": 0.27378326654434204,
+    "layers_changed": 128
+   },
+   "sheet_columns": [
+    "none",
+    "random",
+    "tail",
+    "rank_1",
+    "consensus",
+    "swap_lcm",
+    "swap_pcm",
+    "swap_hyper4",
+    "swap_flash",
+    "full"
+   ]
+  },
+  "pcm": {
+   "none": {
+    "lpips_to_full": 0.823674201965332,
+    "recovery": 0.0,
+    "recovery_ci": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "texture_gap_db": 15.00101998314799,
+    "signed_fine_deficit_db": 13.512445309981647,
+    "clip": 0.2715916037559509,
+    "layers_changed": 0
+   },
+   "full": {
+    "lpips_to_full": 0.0,
+    "recovery": 1.0,
+    "recovery_ci": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0
+    },
+    "texture_gap_db": 0.0,
+    "signed_fine_deficit_db": 0.0,
+    "clip": 0.32248198986053467,
+    "layers_changed": 278
+   },
+   "rank_1": {
+    "lpips_to_full": 0.1393054723739624,
+    "recovery": 0.8308730721473694,
+    "recovery_ci": {
+     "mean": 0.8330744504928589,
+     "lo": 0.7895495235919953,
+     "hi": 0.8731901481747627
+    },
+    "texture_gap_db": 1.1134700700564482,
+    "signed_fine_deficit_db": 0.6841270638643764,
+    "clip": 0.3251941204071045,
+    "layers_changed": 278
+   },
+   "tail": {
+    "lpips_to_full": 0.7370145320892334,
+    "recovery": 0.10521107912063599,
+    "recovery_ci": {
+     "mean": 0.10135660320520401,
+     "lo": 0.06726006418466568,
+     "hi": 0.12769038528203963
+    },
+    "texture_gap_db": 11.2983434810926,
+    "signed_fine_deficit_db": 10.279939965035258,
+    "clip": 0.286342978477478,
+    "layers_changed": 278
+   },
+   "random": {
+    "lpips_to_full": 0.8194479942321777,
+    "recovery": 0.005130946636199951,
+    "recovery_ci": {
+     "mean": 0.005034774541854858,
+     "lo": 0.0019637596793472766,
+     "hi": 0.008059712778776883
+    },
+    "texture_gap_db": 14.945100285874172,
+    "signed_fine_deficit_db": 13.529500479398472,
+    "clip": 0.2723475694656372,
+    "layers_changed": 278
+   },
+   "consensus": {
+    "lpips_to_full": 0.6032683849334717,
+    "recovery": 0.26758861541748047,
+    "recovery_ci": {
+     "mean": 0.2548779249191284,
+     "lo": 0.19135031811892986,
+     "hi": 0.3155207201838493
+    },
+    "texture_gap_db": 6.206543444030984,
+    "signed_fine_deficit_db": -7.321617436434501,
+    "clip": 0.27859604358673096,
+    "layers_changed": 278
+   },
+   "swap_lcm": {
+    "lpips_to_full": 0.6834686994552612,
+    "recovery": 0.17021960020065308,
+    "recovery_ci": {
+     "mean": 0.15166819095611572,
+     "lo": 0.04206494586542249,
+     "hi": 0.2422026436775922
+    },
+    "texture_gap_db": 7.328031880607428,
+    "signed_fine_deficit_db": -7.250354512060127,
+    "clip": 0.2631914019584656,
+    "layers_changed": 278
+   },
+   "swap_tcd": {
+    "lpips_to_full": 0.5696549415588379,
+    "recovery": 0.30839771032333374,
+    "recovery_ci": {
+     "mean": 0.2941993772983551,
+     "lo": 0.21666599735617637,
+     "hi": 0.3700672797858715
+    },
+    "texture_gap_db": 7.959513411125506,
+    "signed_fine_deficit_db": -9.16650955386137,
+    "clip": 0.2857780456542969,
+    "layers_changed": 278
+   },
+   "swap_hyper4": {
+    "lpips_to_full": 0.4330372214317322,
+    "recovery": 0.4742615222930908,
+    "recovery_ci": {
+     "mean": 0.47104376554489136,
+     "lo": 0.40243486166000364,
+     "hi": 0.5406940907239913
+    },
+    "texture_gap_db": 3.374949740512805,
+    "signed_fine_deficit_db": 2.9190203596518116,
+    "clip": 0.3096543252468109,
+    "layers_changed": 278
+   },
+   "swap_flash": {
+    "lpips_to_full": 0.6644027233123779,
+    "recovery": 0.19336706399917603,
+    "recovery_ci": {
+     "mean": 0.18810871243476868,
+     "lo": 0.14920330457389355,
+     "hi": 0.222051502764225
+    },
+    "texture_gap_db": 9.622025551735181,
+    "signed_fine_deficit_db": 8.858184847591698,
+    "clip": 0.30585891008377075,
+    "layers_changed": 128
+   },
+   "sheet_columns": [
+    "none",
+    "random",
+    "tail",
+    "rank_1",
+    "consensus",
+    "swap_lcm",
+    "swap_tcd",
+    "swap_hyper4",
+    "swap_flash",
+    "full"
+   ]
+  },
+  "hyper4": {
+   "none": {
+    "lpips_to_full": 0.8874639272689819,
+    "recovery": 0.0,
+    "recovery_ci": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "texture_gap_db": 17.034704867272318,
+    "signed_fine_deficit_db": 16.31604421670543,
+    "clip": 0.2715916037559509,
+    "layers_changed": 0
+   },
+   "full": {
+    "lpips_to_full": 0.0,
+    "recovery": 1.0,
+    "recovery_ci": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0
+    },
+    "texture_gap_db": 0.0,
+    "signed_fine_deficit_db": 0.0,
+    "clip": 0.32155072689056396,
+    "layers_changed": 278
+   },
+   "rank_1": {
+    "lpips_to_full": 0.33852583169937134,
+    "recovery": 0.6185469627380371,
+    "recovery_ci": {
+     "mean": 0.6200594902038574,
+     "lo": 0.5509168729186058,
+     "hi": 0.6891857579350471
+    },
+    "texture_gap_db": 4.437639747177697,
+    "signed_fine_deficit_db": 5.294568216809806,
+    "clip": 0.31621360778808594,
+    "layers_changed": 278
+   },
+   "tail": {
+    "lpips_to_full": 0.799811601638794,
+    "recovery": 0.0987672209739685,
+    "recovery_ci": {
+     "mean": 0.09859395027160645,
+     "lo": 0.07918859552592039,
+     "hi": 0.11735269241034985
+    },
+    "texture_gap_db": 13.788066507273282,
+    "signed_fine_deficit_db": 13.37389883157243,
+    "clip": 0.2923111617565155,
+    "layers_changed": 278
+   },
+   "random": {
+    "lpips_to_full": 0.8865756392478943,
+    "recovery": 0.0010009407997131348,
+    "recovery_ci": {
+     "mean": 0.001004144549369812,
+     "lo": -0.0006563364528119563,
+     "hi": 0.0026838797144591803
+    },
+    "texture_gap_db": 16.945955326079236,
+    "signed_fine_deficit_db": 16.28567351257146,
+    "clip": 0.2729983329772949,
+    "layers_changed": 278
+   },
+   "consensus": {
+    "lpips_to_full": 0.620898962020874,
+    "recovery": 0.3003671169281006,
+    "recovery_ci": {
+     "mean": 0.2988123297691345,
+     "lo": 0.26516897678375245,
+     "hi": 0.3375909112393856
+    },
+    "texture_gap_db": 4.890424310557545,
+    "signed_fine_deficit_db": -4.9166748944964205,
+    "clip": 0.29601192474365234,
+    "layers_changed": 278
+   },
+   "swap_lcm": {
+    "lpips_to_full": 0.727745532989502,
+    "recovery": 0.17997169494628906,
+    "recovery_ci": {
+     "mean": 0.17452087998390198,
+     "lo": 0.1036404462531209,
+     "hi": 0.23370647989213464
+    },
+    "texture_gap_db": 5.583705904575744,
+    "signed_fine_deficit_db": -5.033782595901444,
+    "clip": 0.2605348825454712,
+    "layers_changed": 278
+   },
+   "swap_tcd": {
+    "lpips_to_full": 0.5879135727882385,
+    "recovery": 0.3375352621078491,
+    "recovery_ci": {
+     "mean": 0.3365084230899811,
+     "lo": 0.3013179682195187,
+     "hi": 0.37092867493629456
+    },
+    "texture_gap_db": 5.572200491370829,
+    "signed_fine_deficit_db": -5.9791527474040675,
+    "clip": 0.3038005828857422,
+    "layers_changed": 278
+   },
+   "swap_pcm": {
+    "lpips_to_full": 0.5125848054885864,
+    "recovery": 0.42241615056991577,
+    "recovery_ci": {
+     "mean": 0.42443233728408813,
+     "lo": 0.3796167477965355,
+     "hi": 0.47125155478715897
+    },
+    "texture_gap_db": 2.9335765719224147,
+    "signed_fine_deficit_db": 3.1045260155783234,
+    "clip": 0.3230021595954895,
+    "layers_changed": 278
+   },
+   "swap_flash": {
+    "lpips_to_full": 0.7606193423271179,
+    "recovery": 0.14292925596237183,
+    "recovery_ci": {
+     "mean": 0.14091715216636658,
+     "lo": 0.1134667593985796,
+     "hi": 0.16584290638566015
+    },
+    "texture_gap_db": 12.50345218867763,
+    "signed_fine_deficit_db": 12.421688668060556,
+    "clip": 0.30580800771713257,
+    "layers_changed": 128
+   },
+   "sheet_columns": [
+    "none",
+    "random",
+    "tail",
+    "rank_1",
+    "consensus",
+    "swap_lcm",
+    "swap_tcd",
+    "swap_pcm",
+    "swap_flash",
+    "full"
+   ]
+  },
+  "flash": {
+   "none": {
+    "lpips_to_full": 0.9495335817337036,
+    "recovery": 0.0,
+    "recovery_ci": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "texture_gap_db": 26.358529304009267,
+    "signed_fine_deficit_db": 22.33298513570343,
+    "clip": 0.21779575943946838,
+    "layers_changed": 0
+   },
+   "full": {
+    "lpips_to_full": 0.0,
+    "recovery": 1.0,
+    "recovery_ci": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0
+    },
+    "texture_gap_db": 0.0,
+    "signed_fine_deficit_db": 0.0,
+    "clip": 0.3353213667869568,
+    "layers_changed": 128
+   },
+   "rank_1": {
+    "lpips_to_full": 0.203154057264328,
+    "recovery": 0.7860485911369324,
+    "recovery_ci": {
+     "mean": 0.777961790561676,
+     "lo": 0.7295787245035171,
+     "hi": 0.8209109365940094
+    },
+    "texture_gap_db": 3.2258436019541628,
+    "signed_fine_deficit_db": 3.051452665263691,
+    "clip": 0.33720332384109497,
+    "layers_changed": 128
+   },
+   "tail": {
+    "lpips_to_full": 0.9377257823944092,
+    "recovery": 0.012435376644134521,
+    "recovery_ci": {
+     "mean": 0.013162527233362198,
+     "lo": 0.005423928797245026,
+     "hi": 0.02166190361604094
+    },
+    "texture_gap_db": 26.29843167988909,
+    "signed_fine_deficit_db": 22.028204883731583,
+    "clip": 0.21853762865066528,
+    "layers_changed": 128
+   },
+   "random": {
+    "lpips_to_full": 0.9490453600883484,
+    "recovery": 0.0005141496658325195,
+    "recovery_ci": {
+     "mean": 0.0006380528211593628,
+     "lo": -0.0008020409382879734,
+     "hi": 0.0022806865163147445
+    },
+    "texture_gap_db": 26.142077448151213,
+    "signed_fine_deficit_db": 22.14518021190119,
+    "clip": 0.21864710748195648,
+    "layers_changed": 128
+   },
+   "consensus": {
+    "lpips_to_full": 0.8195666670799255,
+    "recovery": 0.1368744969367981,
+    "recovery_ci": {
+     "mean": 0.12034015357494354,
+     "lo": 0.04072890272364021,
+     "hi": 0.18291801884770392
+    },
+    "texture_gap_db": 10.298981708527688,
+    "signed_fine_deficit_db": 7.761648365436868,
+    "clip": 0.26620227098464966,
+    "layers_changed": 128
+   },
+   "swap_lcm": {
+    "lpips_to_full": 0.8116601705551147,
+    "recovery": 0.1452012062072754,
+    "recovery_ci": {
+     "mean": 0.1054675355553627,
+     "lo": -0.06179627599194645,
+     "hi": 0.2322509415447712
+    },
+    "texture_gap_db": 11.987437217650115,
+    "signed_fine_deficit_db": -11.67755685404743,
+    "clip": 0.23775987327098846,
+    "layers_changed": 128
+   },
+   "swap_tcd": {
+    "lpips_to_full": 0.7995029091835022,
+    "recovery": 0.15800458192825317,
+    "recovery_ci": {
+     "mean": 0.14978156983852386,
+     "lo": 0.08858281336724758,
+     "hi": 0.20448334999382495
+    },
+    "texture_gap_db": 11.261577030767906,
+    "signed_fine_deficit_db": 9.257531920087992,
+    "clip": 0.2790944278240204,
+    "layers_changed": 128
+   },
+   "swap_pcm": {
+    "lpips_to_full": 0.7855886220932007,
+    "recovery": 0.17265838384628296,
+    "recovery_ci": {
+     "mean": 0.1709572970867157,
+     "lo": 0.11872533317655325,
+     "hi": 0.23021393455564976
+    },
+    "texture_gap_db": 15.584512437807485,
+    "signed_fine_deficit_db": 14.048970932753281,
+    "clip": 0.2883337140083313,
+    "layers_changed": 128
+   },
+   "swap_hyper4": {
+    "lpips_to_full": 0.8571174740791321,
+    "recovery": 0.09732788801193237,
+    "recovery_ci": {
+     "mean": 0.09243229031562805,
+     "lo": 0.048676617443561554,
+     "hi": 0.13576945774257182
+    },
+    "texture_gap_db": 27.17060237089376,
+    "signed_fine_deficit_db": 24.530872089483438,
+    "clip": 0.2446291148662567,
+    "layers_changed": 128
+   },
+   "sheet_columns": [
+    "none",
+    "random",
+    "tail",
+    "rank_1",
+    "consensus",
+    "swap_lcm",
+    "swap_tcd",
+    "swap_pcm",
+    "swap_hyper4",
+    "full"
+   ]
+  }
+ }
+}

@@ -1,21 +1,25 @@
-# Research direction: anatomy of acceleration adapters
+# Research direction: what acceleration adapters have in common
 
-The term project now follows one idea. This folder holds everything needed to start.
+The term project follows one idea. This folder holds the plan; the results are in
+[`../docs/RESULTS.md`](../docs/RESULTS.md).
 
 | File | What it is |
 |---|---|
-| [proposal.md](proposal.md) | The project proposal: question, hypotheses, plan, timeline |
+| [proposal.md](proposal.md) | The project proposal (third version): questions, hypotheses, plan, division of work, timeline |
 | [plan-explained.md](plan-explained.md) | The same plan in plain language, for a newcomer to generative AI |
-| [01-anatomy-of-acceleration-adapters.md](01-anatomy-of-acceleration-adapters.md) | The idea in brief, with the pilot table and prior work |
-| [study-guide.md](study-guide.md) | Background explanation and a reading list |
-| [pilots.md](pilots.md) | How the pilot experiments were run |
+| [study-guide.md](study-guide.md) | Reading list and reading order |
+| [../docs/LITERATURE_REVIEW.md](../docs/LITERATURE_REVIEW.md) | Background and related work |
+| [pilots.md](pilots.md) | How the earlier pilot experiments were run |
+| [01-anatomy-of-acceleration-adapters.md](01-anatomy-of-acceleration-adapters.md) | The idea as first written on 11 November, kept as a record |
 
 ## The idea in one paragraph
 
-Few-step distillation is shipped as a low-rank weight delta on a base model, such as
-LCM-LoRA. The project asks whether different distillation methods change the model in the
-same direction. In the pilot, one direction per layer carried LCM-LoRA's effect: keeping
-1 of 64 directions preserved 87% of it, and the other 63 together did nothing.
+Few-step distillation is shipped as a low-rank weight change on a base model, such as
+LCM-LoRA. In nine public adapters from five independent methods, one direction per layer
+carries the effect, the methods partly agree on that direction, and the direction acts
+almost like a constant added to each layer's output. The project asks whether few-step
+ability is one shared, simple change to the model, what that change is, and whether it
+can be obtained without full distillation.
 
 ## How this follows from the first experiment
 
@@ -39,9 +43,9 @@ from earlier years.
 
 ## Caveats
 
-- Papers dated 2025-2026 come from an automated literature search. The idea file marks
-  which were read. Read them yourself before writing related work.
-- The pilot used one adapter and 16 prompts, and measured closeness to the full adapter's
-  image, not image quality.
+- Papers dated 2025-2026 come from automated literature searches and have not been read
+  in full by us. Read them before writing related work.
+- The first study used 16 prompts, one seed and one base model, and measured prompt
+  alignment and closeness to the full adapter's image, not image quality.
 - Four other directions were considered and dropped on 2026-11-11. Their pilot scripts and
   outputs are still in `scripts/pilots/` and `results/pilots/`, described in pilots.md.
