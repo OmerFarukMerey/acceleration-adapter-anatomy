@@ -10,6 +10,8 @@
 | Status | Draft for discussion with the course advisor |
 
 A plain-language walk-through of this plan is in [plan-explained.md](plan-explained.md).
+The background and related work are covered at more length in the
+[literature review](../docs/LITERATURE_REVIEW.md).
 
 ## Summary
 
