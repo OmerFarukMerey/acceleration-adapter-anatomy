@@ -116,6 +116,65 @@ What remains specific to this project: adapters that differ by distillation obje
 not by task, the block and module-type breakdown, and whether the acceleration subspace
 differs from the generic one that style LoRAs share.
 
+## Gaps found on review (15 November 2026)
+
+A check of this guide against what a paper on this topic needs. Rows marked "search" were
+confirmed to exist by a web search on this date, from abstracts or summaries. Rows marked
+"memory" were written from memory and their arXiv numbers are unverified. None were read
+in full.
+
+### Reading that was missing
+
+| Gap | Paper | Why you need it | Source |
+|---|---|---|---|
+| What LoRA spectra mean | LoRA vs Full Fine-tuning: An Illusion of Equivalence, Shuttleworth et al., [2410.21228](https://arxiv.org/abs/2410.21228) | Shows LoRA adds "intruder" singular directions that full fine-tuning does not. Your top-4 directions may be these. Reviewers will expect you to engage with it | search |
+| Block-level LoRA analysis in diffusion | B-LoRA, Frenkel et al., ECCV 2024, [2403.14572](https://arxiv.org/abs/2403.14572) | Finds two SDXL blocks suffice for style and content. The closest precedent for "which blocks carry it" | search |
+| Compressing adapters | Compress then Serve, [2407.00066](https://arxiv.org/abs/2407.00066) | Per-adapter SVD truncation and a shared-basis method. Truncation alone is prior art; cite it as such | search |
+| Acceleration as a weight delta | PeRFlow, NeurIPS 2024, [2405.07510](https://arxiv.org/abs/2405.07510) | Ships few-step ability as delta weights that transfer across pipelines. A fifth adapter family to dissect | search |
+| Spectral view of few-step LoRAs | DART, [2609.20051](https://arxiv.org/abs/2609.20051) | Studies singular values and subspace rotation when reusing LoRAs on few-step video models. Check for overlap | search (snippet) |
+| More adapter families | Phased Consistency Models, [2405.18407](https://arxiv.org/abs/2405.18407); Flash Diffusion, [2406.02347](https://arxiv.org/abs/2406.02347); SDXL-Turbo / ADD, [2311.17042](https://arxiv.org/abs/2311.17042) | More methods make the cross-method claim stronger | memory |
+| SDXL itself | SDXL, [2307.01952](https://arxiv.org/abs/2307.01952) | Needed before dissecting SDXL adapters | memory |
+| UNet roles | FreeU, [2309.11497](https://arxiv.org/abs/2309.11497) | Backbone against skip features; context for "the decoder carries it" | memory |
+| Comparing subspaces | SVCCA, [1706.05806](https://arxiv.org/abs/1706.05806); CKA, [1905.00414](https://arxiv.org/abs/1905.00414); section 7 of the LoRA paper | Standard similarity measures and their pitfalls. The LoRA paper defines the subspace-similarity score you would reuse | memory |
+| FID done correctly | clean-FID, Parmar et al., [2104.11222](https://arxiv.org/abs/2104.11222); CMMD, Jayasumana et al., [2401.09603](https://arxiv.org/abs/2401.09603) | FID changes with resizing and is weak at 5,000 images. Use clean-FID and report CMMD too | memory |
+| Preference metrics | HPSv2, [2306.09341](https://arxiv.org/abs/2306.09341); ImageReward, [2304.05977](https://arxiv.org/abs/2304.05977); PickScore, [2305.01569](https://arxiv.org/abs/2305.01569) | Few-step papers now report at least one | memory |
+| Few-step evaluation pitfalls | Guidance Matters, [2602.22570](https://arxiv.org/abs/2602.22570) | Argues FID and guidance choices mislead for few-step models | search (snippet) |
+| Metric tooling | [EvalScope text-to-image evaluation guide](https://evalscope.readthedocs.io/en/latest/user_guides/aigc/t2i.html) | A practical overview of PickScore, HPSv2 and ImageReward with typical score ranges. A how-to, not a citable paper | search |
+
+### What a reading list cannot supply
+
+- **Results.** The paper needs the replication on other adapters, the controls and the
+  quality table. One pilot on one adapter is all that exists.
+- **The time-path caveat.** LCM-LoRA's finding that time layers are idle may depend on how
+  that adapter was trained. Check which modules each adapter targets before comparing.
+- **A random-subspace baseline** for every overlap number, and at least 3 seeds.
+- **Full readings of WaDi, MTEO and EigenLoRAx.** Positioning depends on details that
+  abstracts do not give.
+- **A GPU** for SDXL and for training a compact adapter.
+- **Writing.** Read two recent analysis papers from the target venue for structure. The
+  intruder-dimensions paper above is a good model.
+
+A targeted search on this date found no paper that ablates which layers matter inside a
+few-step distillation LoRA. That is one search, not proof the question is open.
+
+## Where to start
+
+A first week, in order. Each step has a concrete output.
+
+1. **Read** LoRA (sections 4 and 7), LCM-LoRA, and the intruder-dimensions paper.
+   Output: half a page on what a singular direction of a LoRA delta means.
+2. **Rerun the pilot**: `.venv/bin/python scripts/pilots/c_lora_anatomy.py`. Read the
+   script until you can explain every line of `factorize` and `install`.
+   Output: the same table as in the proposal, from your own run.
+3. **Read** WaDi, MTEO and EigenLoRAx in full. Output: one paragraph each on what they
+   claim and what they leave open.
+4. **List the adapters.** For Hyper-SD, TCD, DMD2 and PeRFlow on SD 1.5, find the weight
+   file, its rank, and which modules it targets. Output: one table. If an adapter does
+   not touch a module type, say so before comparing it with LCM-LoRA.
+5. **Fix the thresholds** in the proposal's hypotheses with your advisor.
+6. **Run the dissection on one more adapter.** This is the first real test of whether
+   the finding is general.
+
 ## Suggested reading order
 
 1. DDIM, then classifier-free guidance.
@@ -124,3 +183,5 @@ differs from the generic one that style LoRAs share.
 4. EigenLoRAx, then the Universal Weight Subspace Hypothesis.
 5. Task arithmetic and the intrinsic-dimension paper.
 6. The other distillation papers, as you reach each adapter.
+7. Before running anything: the intruder-dimensions paper and B-LoRA.
+8. Before the quality table: clean-FID, CMMD and one preference metric.
