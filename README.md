@@ -11,8 +11,9 @@ It is a term project for Generative Models for Multimedia at METU. The proposal 
 
 ## Current direction
 
-**Status: first study done on Stable Diffusion 1.5 at small scale. Quality metrics, larger
-models and training have not started.**
+**Status: first study done on Stable Diffusion 1.5; weight comparison repeated on SDXL,
+SD3 Medium and FLUX.1-dev and against fully fine-tuned models; quality metrics and a
+training pilot are at 500 and 100 COCO captions.**
 
 The study compares nine public acceleration adapters from five independent methods (LCM,
 TCD, PCM, Hyper-SD, Flash Diffusion), with three style adapters as controls. It uses 4
@@ -25,6 +26,16 @@ steps, 16 prompts and one seed.
 - **The direction acts almost like a constant.** One fixed vector added to each layer's
   output, the same for every prompt and step, keeps prompt alignment within 0.003 of the
   full adapter in four of five methods.
+
+- **The agreement holds on other base models.** 0.14 to 0.68 on SDXL (8 methods), 0.15 to
+  0.30 on SD3 Medium, 0.20 to 0.49 on FLUX.1-dev; controls at or below 0.10.
+- **Rank 1 belongs to the LoRA, the direction does not.** Fully fine-tuned few-step models
+  are not rank 1, but their top direction agrees with the adapters' at 0.12 to 0.38.
+- **A strength per layer can be trained (pilot).** Frozen base model, shared direction
+  fixed, 1,112 trained numbers: PickScore 18.77 to 20.90 at 4 steps (public adapters 21.3
+  to 21.9; random direction 19.76).
+
+![Agreement between independent methods on four base models](results/study/s8_models.png)
 
 | Adapter | Energy in top direction | CLIP: no adapter | Top direction only | One constant per layer | Full adapter |
 |---|---:|---:|---:|---:|---:|
@@ -41,9 +52,10 @@ steps, 16 prompts and one seed.
 *TCD adapter at 4 steps. Columns: no adapter, one constant per layer, one constant per
 layer and step, coefficient averaged over positions, top direction only, full adapter.*
 
-These are prompt-alignment and closeness measures on 16 prompts, not image quality. The
-next steps are quality metrics on thousands of prompts, SDXL and a transformer model, and
-training the shared direction directly. A decision point is set for 6 December 2026.
+The table above is prompt alignment on 16 prompts. On 500 COCO captions (section 7 of the
+results) one constant per layer costs 0.01 to 0.15 PickScore points on four of five
+methods, against 2.8 to 3.4 for removing the adapter, with FID not worse. The
+next steps are function tests on SDXL and finding the direction without existing adapters. A decision point is set for 6 December 2026.
 
 | Read | For |
 |---|---|

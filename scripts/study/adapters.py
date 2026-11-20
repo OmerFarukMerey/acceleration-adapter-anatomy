@@ -197,4 +197,4 @@ def bench(n_prompts: int = 16) -> SimpleNamespace:
             out.append(((x.clamp(-1, 1) + 1) * 127.5).round().permute(0, 2, 3, 1).byte().cpu().numpy())
         return np.concatenate(out)
 
-    return SimpleNamespace(device=device, unet=unet, install=install, generate=generate, trajectory=trajectory, prompts=prompts, items=items, conds=conds, empty=empty)
+    return SimpleNamespace(device=device, unet=unet, vae=vae, encode=encode, sched_cfg=sched_cfg, install=install, generate=generate, trajectory=trajectory, prompts=prompts, items=items, conds=conds, empty=empty)

@@ -2,7 +2,9 @@
 
 First study for the [project proposal](../research_ideas/proposal.md), run on 15 and 16
 November 2026 on one laptop (Apple M4 Pro, 24 GB). It compares nine public few-step
-adapters for Stable Diffusion 1.5 in weight space and in function.
+adapters for Stable Diffusion 1.5 in weight space and in function. Sections 5 to 8 were
+added on 19 and 20 November: other base models, fully fine-tuned models, image-quality
+metrics on COCO captions, and a small training pilot.
 
 ## Findings
 
@@ -24,14 +26,32 @@ adapters for Stable Diffusion 1.5 in weight space and in function.
 7. **It is partly built-in guidance.** The adapters' effect on the network output lines
    up with the guidance direction at the first step and less at later steps.
 
+8. **The agreement holds on three other base models.** Independent methods agree at
+   0.14 to 0.68 on SDXL (8 methods), 0.15 to 0.30 on SD3 Medium and 0.20 to 0.49 on
+   FLUX.1-dev. Controls stay at or below 0.10, 0.013 and 0.023.
+9. **Rank 1 is a property of the LoRA, the direction is not.** Fully fine-tuned few-step
+   models spread their change over many directions (top direction 4% to 14% of the
+   energy), yet their top direction agrees with the adapters' at 0.12 to 0.38, against
+   0.02 to 0.04 for style adapters.
+10. **Quality metrics agree with the earlier picture (500 COCO captions).** On four of
+    five methods, rank 1 costs at most 0.05 PickScore points and one constant per layer at
+    most 0.15, against 2.8 to 3.4 points for removing the adapter; FID and CMMD do not get
+    worse. Flash Diffusion loses 0.7 points with constants.
+11. **A strength per layer can be trained from scratch (pilot).** With the base model
+    frozen and the shared direction fixed, 1,112 trained numbers move PickScore from 18.77
+    to 20.90 in 4 steps. A random direction with the same budget reaches 19.76, and a free
+    bias with 1.26 million numbers reaches 20.51.
+
 ## How far to trust this
 
 - **Small sample.** 16 prompts and one seed per prompt. No intervals are reported here.
-- **No quality metric.** "Recovery" measures closeness to the full adapter's image, and
-  CLIP score measures prompt alignment. Neither measures image quality. The base model
-  with guidance at 4 steps scores 0.321 on CLIP, as high as the adapters, so CLIP alone
-  cannot rank these arms.
-- **One base model.** Stable Diffusion 1.5 only.
+- **Quality metrics are at 500 captions.** Sections 1 to 4 use recovery and CLIP only.
+  Section 7 adds PickScore, CMMD, FID and KID on 500 COCO captions, one seed each. FID at
+  500 images is not comparable with published 5,000 or 30,000-image numbers.
+- **Function was tested on one base model.** Sections 5 and 6 compare weights only. No
+  image was generated with SDXL, SD3 or FLUX.
+- **The training pilot is small.** 200 training captions, 2 epochs, one seed, learning
+  rates not tuned, 100 evaluation captions.
 - **Scale factors were chosen on the test prompts.** Finding 5 picks the best of 7 or 8
   factors on the same 16 prompts, which flatters it.
 - **Shared training data is not ruled out.** The methods are independent in starting
@@ -268,6 +288,146 @@ compared with the base model's guidance direction (prompted minus unprompted out
 - **Guidance plus a rescaling of the prediction explains under half** of the effect for
   the four adapters that change every layer type, and about half for Flash Diffusion.
 
+## 5. Other base models
+
+Weights only, no image generation. Same measures as sections 1 and 2. The transformer
+adapters store no LoRA alpha and are read at scale 1, which leaves directions and energy
+shares unchanged.
+
+![Agreement on four base models](../results/study/s8_models.png)
+
+| Base model | Independent methods | Pairs | Agreement (range, mean) | Largest control |
+|---|---|---:|---|---:|
+| SD 1.5 | LCM, TCD, PCM, Hyper-SD, Flash | 10 | 0.29 to 0.76, 0.47 | 0.07 |
+| SDXL | LCM, TCD, PCM, Hyper-SD, DMD2, Lightning, Flash, TDD | 28 | 0.14 to 0.68, 0.36 | 0.10 |
+| SD3 Medium | Hyper-SD, PCM, Flash | 3 | 0.15 to 0.30, 0.25 | 0.013 |
+| FLUX.1-dev | Hyper-SD, Turbo-Alpha, TDD | 3 | 0.20 to 0.49, 0.32 | 0.023 |
+
+- **Controls.** SDXL: three style adapters (acceleration against style 0.02 to 0.10,
+  style against style 0.03 to 0.05), random directions and mismatched layers of equal
+  shape (0.01 to 0.05). SD3 and FLUX: random directions and mismatched layers only; no
+  style adapters were included.
+- **Concentration.** Top-direction energy is 0.90 to 0.98 for seven of eight SDXL methods
+  (Flash 0.82), 0.84 to 0.99 on SD3, and 0.91 to 0.95 on FLUX except Turbo-Alpha at 0.37.
+  SDXL style adapters: 0.82, 0.11 and 0.48.
+- **Starting point.** For every independent pair the overlap of the weak input directions
+  equals that of unrelated subspaces. Same-family pairs differ: Hyper-FLUX 8-step and
+  16-step overlap at 0.97.
+- **Same family.** Agreement is higher within a release family, for example Hyper-SDXL
+  4-step against 8-step 0.995 and against 1-step 0.64, Lightning 4-step against 2-step
+  0.83, TDD with and without the adversarial loss 0.89.
+- **Highest and lowest SDXL pairs.** TCD and TDD 0.68; Lightning and Flash 0.14.
+
+## 6. Fully fine-tuned few-step models
+
+A LoRA can only make a low-rank change. Three fully fine-tuned SD 1.5-family students
+were compared with their own base model on the 278 layers the adapters touch.
+
+| Student | Method | Top-direction energy | Share of rank for 90% energy | Agreement with acceleration adapters | With style adapters |
+|---|---|---:|---:|---|---|
+| DMD2 (1 step) | distribution matching, adversarial | 0.071 | 0.22 | 0.16 to 0.38 | 0.02 to 0.04 |
+| LCM DreamShaper v7 | consistency, DreamShaper 7 base | 0.137 | 0.19 | 0.16 to 0.34 | 0.02 to 0.04 |
+| 2-Rectified Flow | reflow | 0.040 | 0.33 | 0.12 to 0.14 | 0.02 to 0.04 |
+
+- **The full change is not rank 1.** Concentration in one direction comes from the LoRA
+  form, or from what LoRA training keeps, not from few-step training as such.
+- **The direction is still there.** The top direction of each full change agrees with
+  the adapters' top direction well above the controls, although at most 0.7% of the full
+  change's energy lies along it.
+- **Students agree with each other less:** DMD2 and LCM 0.23, DMD2 and reflow 0.13,
+  reflow and LCM 0.09.
+- **Rectified flow is the weakest match**, which fits its different training target
+  (straight paths, not consistency or distribution matching).
+
+## 7. Image quality on COCO captions
+
+500 captions from MS-COCO 2014 val, one seed each, 512 px, 4 steps without guidance.
+PickScore is a learned human-preference score (higher is better). CMMD is the CLIP-MMD
+distance to the real COCO photos, FID and KID (times 1000) are clean-fid against the same
+photos (all lower is better). FID is biased upward at 500 images, so only differences
+between rows mean anything. PickScore differences are against the same method's full
+adapter, with paired bootstrap 95% intervals.
+
+| Arm | CLIP | PickScore | CMMD | FID | KID |
+|---|---:|---:|---:|---:|---:|
+| Real COCO photos | 0.303 | 21.26 | | | |
+| Base model, 25 steps, guidance 7.5 | 0.315 | 21.55 | 0.48 | 97.1 | 3.5 |
+| Base model, 4 steps, guidance 7.5 | 0.308 | 20.43 | 0.87 | 110.4 | 8.5 |
+| Base model, 4 steps, no adapter, DDIM | 0.249 | 18.71 | 2.39 | 190.2 | 73.5 |
+| Base model, 4 steps, no adapter, LCM sampler | 0.204 | 17.85 | 3.59 | 260.6 | 145.2 |
+| Base model, 4 steps, no adapter, TCD sampler | 0.236 | 18.28 | 2.83 | 208.1 | 85.2 |
+
+| Method | Version | CLIP | PickScore | CMMD | FID | KID | PickScore minus full | Wins against full |
+|---|---|---:|---:|---:|---:|---:|---|---:|
+| LCM | full | 0.305 | 21.21 | 0.51 | 105.2 | 7.6 | | |
+| | rank 1 | 0.305 | 21.19 | 0.51 | 105.6 | 7.6 | -0.02 [-0.05, +0.02] | 0.50 |
+| | constant per layer and step | 0.301 | 21.01 | 0.50 | 105.8 | 7.7 | -0.20 [-0.26, -0.15] | 0.38 |
+| | constant per layer | 0.302 | 21.06 | 0.44 | 102.0 | 4.8 | -0.15 [-0.22, -0.07] | 0.45 |
+| TCD | full | 0.308 | 21.32 | 0.44 | 98.6 | 4.6 | | |
+| | rank 1 | 0.308 | 21.30 | 0.44 | 99.4 | 5.0 | -0.02 [-0.05, +0.00] | 0.47 |
+| | constant per layer and step | 0.306 | 21.21 | 0.42 | 99.7 | 5.3 | -0.11 [-0.15, -0.07] | 0.43 |
+| | constant per layer | 0.304 | 21.28 | 0.39 | 98.1 | 2.7 | -0.04 [-0.10, +0.02] | 0.49 |
+| PCM | full | 0.304 | 21.49 | 0.47 | 102.0 | 8.1 | | |
+| | rank 1 | 0.306 | 21.52 | 0.46 | 99.9 | 6.6 | +0.03 [-0.01, +0.07] | 0.56 |
+| | constant per layer and step | 0.303 | 21.40 | 0.46 | 100.2 | 6.9 | -0.09 [-0.13, -0.04] | 0.44 |
+| | constant per layer | 0.304 | 21.47 | 0.42 | 97.4 | 4.4 | -0.01 [-0.08, +0.05] | 0.53 |
+| Hyper-SD | full | 0.314 | 21.79 | 0.69 | 101.7 | 6.2 | | |
+| | rank 1 | 0.311 | 21.74 | 0.66 | 102.7 | 7.5 | -0.05 [-0.09, -0.01] | 0.47 |
+| | constant per layer and step | 0.307 | 21.61 | 0.66 | 104.1 | 8.4 | -0.17 [-0.22, -0.12] | 0.40 |
+| | constant per layer | 0.311 | 21.74 | 0.60 | 101.5 | 6.7 | -0.05 [-0.10, +0.01] | 0.49 |
+| Flash | full | 0.310 | 21.50 | 0.52 | 96.2 | 2.0 | | |
+| | rank 1 | 0.310 | 21.30 | 0.48 | 96.6 | 1.7 | -0.20 [-0.24, -0.16] | 0.33 |
+| | constant per layer and step | 0.302 | 20.95 | 0.53 | 97.2 | 1.7 | -0.55 [-0.60, -0.49] | 0.17 |
+| | constant per layer | 0.300 | 20.79 | 0.62 | 99.8 | 2.2 | -0.71 [-0.78, -0.65] | 0.15 |
+
+- **PickScore separates what CLIP could not.** The guided base model at 4 steps matches
+  the adapters on CLIP but is 0.8 to 1.4 points lower on PickScore.
+- **Rank 1 costs at most 0.05 PickScore points on four methods** (0.20 on Flash), with FID
+  and CMMD unchanged.
+- **One constant per layer costs 0.01 to 0.15 points on four methods.** Two of the four
+  intervals include zero. The gap to the base model without an adapter is 2.8 to 3.4
+  points, so the constant keeps 95% or more of the adapter's gain. Its FID, KID and CMMD
+  are equal to or lower than the full adapter's on those four methods.
+- **One constant for all steps is no worse than one per step.** The per-step version was
+  expected to be the closer copy and it is, on LPIPS to the full adapter's image (0.20 to
+  0.40 against 0.41 to 0.51), but it scores slightly lower on PickScore.
+- **The constant versions give different images of similar quality.** LPIPS to the full
+  adapter's image is 0.4 to 0.5, so "within 0.15 points" is a statement about quality, not
+  about reproducing the same picture.
+- **Flash Diffusion loses 0.55 to 0.71 points with constants.** Its adapter covers attention
+  layers only and its effect is less constant (section 4). Its FID stays within 4 points.
+- The constants were fitted on the 16 development prompts, none of which is a COCO caption.
+
+## 8. Training only a strength per layer (pilot)
+
+The base model is frozen. The teacher is the base model with 20 guided DDIM steps. The
+student takes 4 DDIM steps without guidance and is trained to land on the teacher's state
+at each next step. 200 COCO captions, 2 epochs, about 16 minutes per variant. Scored on 100
+held-out captions with the seeds of section 7.
+
+| What is trained | Trained numbers | Loss, first to last 50 | CLIP | PickScore | CMMD |
+|---|---:|---|---:|---:|---:|
+| Nothing (same sampler) | 0 | | 0.250 | 18.77 | 2.39 |
+| Strength per layer and step, shared direction | 1,112 | 0.0058 to 0.0050 | 0.307 | 20.90 | 0.62 |
+| Strength per layer and step, random direction | 1,112 | 0.0092 to 0.0067 | 0.275 | 19.76 | 1.74 |
+| Free vector per layer and step | 1,262,080 | 0.0072 to 0.0059 | 0.295 | 20.51 | 1.14 |
+| Scale per layer on the shared rank-1 change | 278 | 0.0064 to 0.0057 | 0.307 | 21.12 | 0.55 |
+| For reference: public adapters, full | 67 million (LCM-LoRA) | | 0.305 to 0.317 | 21.29 to 21.92 | 0.46 to 0.70 |
+
+- **The direction carries most of the work.** With the shared direction given, about a
+  thousand numbers bring 4-step sampling to 0.4 to 1.0 PickScore points below the public
+  adapters. The same budget on a random direction gets half as far.
+- **Knowing the direction beats a thousand times more free parameters** at this training
+  length. The free vector may catch up with longer training; that was not tested.
+- **The shared direction was computed from the five public adapters**, so this shows that
+  the direction is sufficient, not that it can be found without them.
+- **The trained strengths resemble the adapters' own constants only loosely.** Against
+  each adapter's constant projected on the shared direction: correlation 0.23 to 0.44 over
+  layers and steps, same sign in 59% to 66% of cases, overall size 0.7 to 1.5 times the
+  adapter's. Different strengths on the same directions reach similar scores.
+- **The teacher here is guided 20-step sampling**, a simpler target than any of the
+  methods' own losses.
+
 ## What this means for the proposal
 
 | Earlier hypothesis (second version) | Result at this scale |
@@ -281,6 +441,13 @@ compared with the base model's guidance direction (prompted minus unprompted out
 New at this stage, and not in any earlier version: the constant-per-layer result and the
 guidance comparison. The third version of the proposal is built around them.
 
+| Hypothesis in the one-page proposal | Status after sections 5 to 8 |
+|---|---|
+| H1: one direction per layer | Held for the LoRAs on four base models; not for full fine-tunes |
+| H2: independent methods agree | Held on four base models and against full fine-tunes |
+| H3: a fixed vector per layer | Held for four of five methods at 500 captions: 0.01 to 0.15 PickScore lower, FID not worse |
+| H4: train only the strength | Pilot positive; direction still taken from existing adapters |
+
 ## Reproduce
 
 ```bash
@@ -291,6 +458,13 @@ guidance comparison. The third version of the proposal is built around them.
 .venv/bin/python scripts/study/s2_function.py        # section 1 function table and swaps
 .venv/bin/python scripts/study/s6_strength.py        # scale factors
 .venv/bin/python scripts/study/s3_mechanism.py       # section 4
+.venv/bin/python scripts/study/s8_other_models.py    # section 5; adapters only, about 11 GB
+.venv/bin/python scripts/study/fig_models.py         # the four-model figure
+.venv/bin/python scripts/study/s9_full_models.py     # section 6; about 14 GB of checkpoints
+.venv/bin/python scripts/study/s7_quality.py 500 50  # section 7 images; needs COCO val2014 captions and photos
+.venv/bin/python scripts/study/s10_train_shift.py    # section 8
+.venv/bin/python scripts/study/s7_score.py                      # scores section 7
+.venv/bin/python scripts/study/s7_score.py --no-fid --trained   # scores section 8
 ```
 
 The first run downloads about 2 GB of adapters from Hugging Face. The image-generating

@@ -55,14 +55,17 @@ vector is far from the full adapter's.
 
 ## 5. Preliminary results
 
-Stable Diffusion 1.5, 4 steps, 16 prompts, one seed:
+Stable Diffusion 1.5, 4 steps, 500 COCO captions (PickScore, FID):
 
-- **H1:** the top direction holds 93–98% of each adapter's energy; the rank-1 part alone
-  recovers 0.62–0.93 of the adapter's effect.
+- **H1:** the top direction holds 93–98% of each adapter's energy; rank 1 alone costs at
+  most 0.05 PickScore on four of five methods (0.20 on the fifth), FID unchanged.
 - **H2:** top directions of independent methods have cosine 0.29–0.76 (mean 0.47), against
-  0.02–0.03 for random directions and 0.02–0.07 for style LoRAs.
-- **H3:** a fixed vector per layer and step recovers 0.55–0.86 of the effect, with CLIP
-  score within 0.02 of the full adapter.
+  0.02–0.07 for random directions and style LoRAs. Weights only: SDXL 0.14–0.68
+  (8 methods), SD3 0.15–0.30, FLUX 0.20–0.49; controls ≤ 0.10.
+- **H3:** one fixed vector per layer costs 0.01–0.15 PickScore on four of five methods
+  (removing the adapter: 2.8–3.4), FID not worse; the fifth method loses 0.7.
+- **H4 (pilot, 100 captions):** 1,112 trained strengths on the shared direction raise
+  PickScore from 18.77 to 20.90 (random direction 19.76; public adapters 21.3–21.9).
 
-No image-quality metric has been run yet, and only one base model is covered.
+FID on 5,000 captions and function tests beyond SD 1.5 are not done yet.
 Code and results: <https://github.com/OmerFarukMerey/acceleration-adapter-anatomy>

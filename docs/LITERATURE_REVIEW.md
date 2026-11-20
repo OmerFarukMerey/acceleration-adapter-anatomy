@@ -20,6 +20,7 @@ carries a mark for how it is known:
 | Mark | Meaning |
 |---|---|
 | **[A]** | Read in full or in large part by an automated reader on 15 November 2026 |
+| **[R]** | Read in full or in main text by an automated reader on 19 November 2026 |
 | **[S]** | Confirmed by a web search (abstract, summary or snippet) on 10-15 November 2026 |
 | **[M]** | Written from memory. The arXiv number and the description are unverified |
 
@@ -225,6 +226,28 @@ Three lines of work are close to that and must be read before claiming it:
   amounts that depend only on the step. Our constants live inside the network, per layer,
   but the idea is related.
 
+Read in full on 19 November 2026, with what each leaves open:
+
+- **MTEO** ([2603.22375](https://arxiv.org/abs/2603.22375) [R]) keeps the backbone frozen
+  and learns a time embedding per step and per layer for few-step sampling (SD 1.5 FID
+  14.93 and 12.92 at 3 and 4 steps, against 36.04 and 24.02 for DDIM). It is the closest
+  work to our training pilot. It does not analyse existing adapters and gives no shared
+  direction.
+- **ReSeed** ([2610.37110](https://arxiv.org/abs/2610.37110), 27 October 2026 [R]) adds a
+  constant bias per block to an already distilled student to restore diversity. The
+  constant is an add-on for diversity, not the acceleration itself.
+- **WaDi** ([2603.08258](https://arxiv.org/abs/2603.08258) [R], main text) compares DMD2
+  students with their teachers and finds the change low-rank ("30% of the rank recovers
+  93%"). The lowest rank tried is 64, and no two distillation methods are compared.
+- **Community rank-1 resizes.** Rank-1 versions of LCM, Turbo and Lightning adapters have
+  circulated on model hubs since December 2023, without measurement. So "rank 1 is enough"
+  is known in practice; what is new is measuring it across methods and what the one
+  direction is.
+- **The intruder-dimensions paper** ([2410.21228](https://arxiv.org/abs/2410.21228) [R]),
+  the Universal Weight Subspace Hypothesis ([2512.05117](https://arxiv.org/abs/2512.05117)
+  [R]) and DART ([2609.20051](https://arxiv.org/abs/2609.20051) [R]) do not cover few-step
+  adapters.
+
 **CASA** (Wang et al., ICML 2026, [2605.01929](https://arxiv.org/abs/2605.01929) [S])
 studies why style adapters fail on step-distilled video models. It reports that
 distillation and LoRA both leave the singular values of the weights nearly unchanged and
@@ -305,16 +328,16 @@ proposal adds clean-FID and one preference metric on at least 5,000 prompts.
 
 Putting the sections together, with what the first study adds:
 
-| Question | Status in the literature | First study (16 prompts, SD 1.5) |
+| Question | Status in the literature | This project (see `docs/RESULTS.md`) |
 |---|---|---|
 | Can few-step ability be stored as a low-rank adapter? | Yes: LCM-LoRA and successors | |
-| Can LoRAs be truncated? | Yes: known in research and in community practice | Down to rank 1, in five methods |
-| How do distilled weights differ from the teacher's? | WaDi, for full checkpoints, one method per model | New directions, not the base model's dominant ones |
+| Can LoRAs be truncated? | Yes: known in research and in community practice | Down to rank 1, in five methods; community rank-1 resizes exist without measurement |
+| How do distilled weights differ from the teacher's? | WaDi, for full checkpoints, one method per model | New directions, not the base model's dominant ones; full fine-tunes are not rank 1 but share the adapters' top direction (0.12 to 0.38) |
 | Which blocks and layer types carry acceleration? | No paper found | Decoder holds 80% to 94% of energy in nine adapters |
 | Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control | Style adapters: no shared output direction |
-| **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random** |
+| **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random; also on SDXL, SD3 Medium and FLUX.1-dev** |
 | **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: after re-scaling** |
-| **What does the shared direction do?** | **No paper found; MTEO and bias tuning are adjacent** | **Close to a constant per layer; partly guidance** |
+| **What does the shared direction do?** | **No paper found; MTEO, ReSeed and bias tuning are adjacent** | **Close to a constant per layer; partly guidance; a strength per layer on it can be trained (pilot)** |
 
 The project's contribution, if it survives larger tests, is the last three rows.
 
@@ -325,10 +348,12 @@ Results from this review that could undercut it, and the control for each:
 2. Agreement inherited from a shared starting point: the weak-direction check. Passed for
    all pairs of different methods.
 3. A rank-1 structure that is an artifact of LoRA training (section 4): comparison with
-   fully distilled checkpoints, as in WaDi. Not yet done.
+   fully distilled checkpoints, as in WaDi. Done for three students: concentration in one
+   direction is specific to the LoRAs, the direction itself is not.
 4. An effect that is mostly built-in guidance (section 3): partly true at the first step;
    a guided baseline at scale is still needed.
-5. A constant-shift result that is already known (section 6): needs a careful search.
+5. A constant-shift result that is already known (section 6): MTEO and ReSeed are the
+   nearest and were read in full; neither reports it for existing adapters.
 6. Agreement that comes from shared training data: cannot be settled with public adapters.
 
 ## What to read first
