@@ -11,15 +11,21 @@ What is trained, on the layers the LCM-LoRA touches:
   bias       a free vector per layer and step (no direction given; a bias-tuning baseline)
   rank1      one number per layer, shared by all steps, scaling the agreed rank-1 weight change
              (input-dependent, as in the adapters)
+  gradient   as strength, with the direction taken from the loss gradient at the base weights
+             (study 14), so no existing adapter is used anywhere
+  gradrank1  as rank1, with the gradient's rank-1 direction
 
 Training captions are COCO val2014 captions 1000-1199 of the fixed order; evaluation images
 are written for captions 0-99, the same captions and seeds as study 7.
 
-    python scripts/study/s10_train_shift.py [variant ...]
+    [S10_EPOCHS=8] python scripts/study/s10_train_shift.py [variant ...]
+
+For the free vector, its agreement with the adapters' shared direction is recorded after every epoch.
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -37,8 +43,10 @@ from s7_quality import coco_items  # noqa: E402
 from wspd import config  # noqa: E402
 
 STEPS, TEACHER_STEPS, GUIDANCE = 4, 20, 7.5
-N_TRAIN, N_EVAL, EPOCHS = 200, 100, 2
-LR = {"strength": 3e-2, "random": 3e-2, "bias": 1e-3, "rank1": 3e-2}
+N_TRAIN, N_EVAL = 200, 100
+EPOCHS = int(os.environ.get("S10_EPOCHS", 2))  # runs with another length are stored under <variant>_e<epochs>
+TAG = "" if EPOCHS == 2 else f"_e{EPOCHS}"
+LR = {"strength": 3e-2, "random": 3e-2, "bias": 1e-3, "rank1": 3e-2, "gradient": 3e-2, "gradrank1": 3e-2}
 OUT = config.RUNS / "study" / "quality_trained"
 
 
@@ -70,6 +78,21 @@ def teacher_data(b, items) -> list[dict]:
     return data
 
 
+def stepper(b):
+    """The student's timesteps, and its deterministic DDIM step from timestep k to k+1 (or to the clean latent)."""
+    sched = SAMPLERS["ddim"](b.sched_cfg)
+    sched.set_timesteps(STEPS, device=b.device)
+    timesteps, alphas = sched.timesteps, sched.alphas_cumprod.to(b.device)
+
+    def move(z, eps, k):
+        a_t = alphas[timesteps[k]]
+        a_next = alphas[timesteps[k + 1]] if k + 1 < STEPS else torch.tensor(1.0, device=b.device)
+        x0 = (z - (1 - a_t).sqrt() * eps) / a_t.sqrt()
+        return a_next.sqrt() * x0 + (1 - a_next).sqrt() * eps
+
+    return timesteps, move
+
+
 def main() -> None:
     variants = sys.argv[1:] or ["untrained", "strength", "random", "bias", "rank1"]
     b = bench()
@@ -82,34 +105,26 @@ def main() -> None:
     agreed = consensus([factors[h] for h in HOSTS], factors["lcm"])  # unit directions; the strength is not used
     rand = random_direction(factors["lcm"])
     mods = {n: b.unet.get_submodule(n) for n in layers}
-    sched = SAMPLERS["ddim"](b.sched_cfg)
-    sched.set_timesteps(STEPS, device=device)
-    timesteps = sched.timesteps
-    alphas = sched.alphas_cumprod.to(device)
-
-    def move(z, eps, k):
-        """One deterministic DDIM step from student timestep k to k+1 (or to the clean latent)."""
-        a_t = alphas[timesteps[k]]
-        a_next = alphas[timesteps[k + 1]] if k + 1 < STEPS else torch.tensor(1.0, device=device)
-        x0 = (z - (1 - a_t).sqrt() * eps) / a_t.sqrt()
-        return a_next.sqrt() * x0 + (1 - a_next).sqrt() * eps
+    timesteps, move = stepper(b)
+    grad = torch.load(config.RUNS / "study" / "factors_gradient.pt")["sum"] if any(v.startswith("grad") for v in variants) else None
 
     path = config.RESULTS / "study" / "s10_train.json"
     results = json.loads(path.read_text()) if path.exists() else {}
     state = {"step": 0}
     for variant in variants:
         torch.manual_seed(0)
-        if variant in ("strength", "random"):
-            source = agreed if variant == "strength" else rand
+        if variant in ("strength", "random", "gradient"):
+            source = {"strength": agreed, "random": rand, "gradient": grad}[variant]
             u = {n: shaped(mods[n], source[n][0][:, 0].to(device)) for n in layers}
             params = {n: torch.zeros(STEPS, device=device, requires_grad=True) for n in layers}
             hook = lambda n: (lambda m, a, out: out + u[n] * params[n][state["step"]])  # noqa: E731
         elif variant == "bias":
             params = {n: torch.zeros(STEPS, mods[n].weight.shape[0], device=device, requires_grad=True) for n in layers}
             hook = lambda n: (lambda m, a, out: out + shaped(m, params[n][state["step"]]))  # noqa: E731
-        elif variant == "rank1":
-            u = {n: shaped(mods[n], agreed[n][0][:, 0].to(device)) for n in layers}
-            v = {n: agreed[n][2][0].to(device) for n in layers}
+        elif variant in ("rank1", "gradrank1"):
+            source = agreed if variant == "rank1" else grad
+            u = {n: shaped(mods[n], source[n][0][:, 0].to(device)) for n in layers}
+            v = {n: source[n][2][0].to(device) for n in layers}
             params = {n: torch.zeros((), device=device, requires_grad=True) for n in layers}
             hook = lambda n: (lambda m, a, out: out + u[n] * (params[n] * coefficient(m, a[0], v[n])))  # noqa: E731
         elif variant == "untrained":  # the same sampling code with nothing added, as the floor
@@ -119,7 +134,7 @@ def main() -> None:
         handles = [mods[n].register_forward_hook(hook(n)) for n in layers] if hook else []
         opt = torch.optim.Adam(params.values(), lr=LR[variant]) if params else None
         order = np.random.default_rng(0)
-        losses, t0 = [], time.time()
+        losses, alignment, t0 = [], [], time.time()
         try:
             for epoch in range(EPOCHS if params else 0):
                 for count, j in enumerate(order.permutation(len(train))):
@@ -138,8 +153,17 @@ def main() -> None:
                     losses.append(total / STEPS)
                     if (count + 1) % 50 == 0:
                         print(f"{variant:9s} epoch {epoch} {count + 1:4d}/{len(train)} | loss {np.mean(losses[-50:]):.5f} | {time.time() - t0:5.0f} s", flush=True)
+                if variant == "bias":  # has the free vector moved toward the direction the adapters share?
+                    num = den = 0.0
+                    for n in layers:
+                        for k in range(STEPS):
+                            p = params[n][k].detach().cpu()
+                            num += float(torch.nn.functional.cosine_similarity(p, agreed[n][0][:, 0], dim=0).abs() * p.pow(2).sum())
+                            den += float(p.pow(2).sum())
+                    alignment.append(num / den)
+                    print(f"bias epoch {epoch} | agreement with the shared direction {alignment[-1]:.3f}", flush=True)
             # Evaluation images: 4 DDIM steps, no guidance, the study 7 captions and seeds.
-            folder = OUT / f"trained_{variant}"
+            folder = OUT / f"trained_{variant}{TAG}"
             folder.mkdir(parents=True, exist_ok=True)
             for i, it in enumerate(evaluation):
                 cond = b.encode(it["caption"])
@@ -153,14 +177,16 @@ def main() -> None:
             for h in handles:
                 h.remove()
         learned = {n: p.detach().cpu() for n, p in params.items()}
-        torch.save(learned, config.RUNS / "study" / f"trained_{variant}.pt")
-        results[variant] = {
+        torch.save(learned, config.RUNS / "study" / f"trained_{variant}{TAG}.pt")
+        results[variant + TAG] = {
             "parameters": int(sum(p.numel() for p in learned.values())),
             "train_captions": len(train), "epochs": EPOCHS, "lr": LR.get(variant), "seconds": time.time() - t0,
             "loss_first_50": float(np.mean(losses[:50] or [0])), "loss_last_50": float(np.mean(losses[-50:] or [0])),
             "loss_curve": [float(np.mean(losses[i : i + 25])) for i in range(0, len(losses), 25)],
+            "agreement_with_shared_direction_per_epoch": alignment,
         }
-        print(f"{variant:9s} done | {results[variant]['parameters']} parameters | loss {results[variant]['loss_first_50']:.5f} -> {results[variant]['loss_last_50']:.5f}", flush=True)
+        r = results[variant + TAG]
+        print(f"{variant:9s} done | {r['parameters']} parameters | loss {r['loss_first_50']:.5f} -> {r['loss_last_50']:.5f}", flush=True)
         path.write_text(json.dumps(results, indent=1))
 
 

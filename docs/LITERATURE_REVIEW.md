@@ -139,6 +139,18 @@ Later work adds three cautions:
   SVD and by a shared basis. Step-distillation LoRAs for the Wan video models are
   published at ranks from 4 to 256 [S]. The project cannot claim rank reduction as a
   contribution; it uses rank 1 as a tool.
+- **A LoRA is expected to follow its first gradient.** LoRA-GA
+  ([2407.05000](https://arxiv.org/abs/2407.05000), NeurIPS 2024) initialises the adapter
+  from the singular vectors of the full gradient at the pretrained weights. LoRA-One
+  ([2502.01235](https://arxiv.org/abs/2502.01235), ICML 2025) proves, for a linear model,
+  that LoRA's factors align with the top singular subspace of the one-step full gradient.
+  Both are known here from a web search on 21 November 2026 (abstract level). They are about
+  language models and one task at a time. For this project they turn section 12 of the
+  results into an explanation: if every method's loss has a similar top gradient direction
+  at the base weights, their adapters should agree. We measured this for a plain loss
+  (0.44 with the shared direction) and for LCM's consistency loss (0.40); the two gradients
+  agree with each other at 0.67. The adapters agree with each other more than with either
+  gradient (up to 0.76), so the first gradient is part of the explanation, not all of it.
 
 ## 5. Acceleration as an adapter
 
@@ -336,10 +348,11 @@ Putting the sections together, with what the first study adds:
 | Which blocks and layer types carry acceleration? | No paper found | Decoder holds 80% to 94% of energy in nine adapters |
 | Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control | Style adapters: no shared output direction |
 | **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random; also on SDXL, SD3 Medium and FLUX.1-dev** |
-| **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: after re-scaling** |
+| **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: an adapter built from the other four methods, with one scale chosen on other prompts, matches the host's own on three of five methods and keeps about 70% of the gain on two** |
 | **What does the shared direction do?** | **No paper found; MTEO, ReSeed and bias tuning are adjacent** | **Close to a constant per layer; partly guidance; a strength per layer on it can be trained (pilot)** |
+| **Where does the shared direction come from?** | **LoRA-GA and LoRA-One: a LoRA follows the top directions of its first gradient (language models, one task)** | **The gradients of a plain few-step loss and of LCM's consistency loss at the base weights agree with it at 0.44 and 0.40, and with each other at 0.67; strengths trained on the gradient direction work with no adapter** |
 
-The project's contribution, if it survives larger tests, is the last three rows.
+The project's contribution, if it survives larger tests, is the last four rows.
 
 Results from this review that could undercut it, and the control for each:
 
@@ -355,6 +368,10 @@ Results from this review that could undercut it, and the control for each:
 5. A constant-shift result that is already known (section 6): MTEO and ReSeed are the
    nearest and were read in full; neither reports it for existing adapters.
 6. Agreement that comes from shared training data: cannot be settled with public adapters.
+7. A gradient result that LoRA theory already predicts (section 4): the new part would be
+   that different distillation losses share the top gradient direction. Shown for a plain
+   loss and for LCM's consistency loss (section 13 of the results); the adversarial and
+   distribution-matching losses are not tested.
 
 ## What to read first
 

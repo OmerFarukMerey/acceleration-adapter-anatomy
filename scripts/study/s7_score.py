@@ -10,7 +10,7 @@ Per arm, on the captions that every arm has finished:
   lpips_full  LPIPS to the same adapter's full version on the same seed
 Differences in clip and pick against the adapter's full version come with paired bootstrap intervals.
 
-    python scripts/study/s7_score.py [--no-fid] [--trained]
+    python scripts/study/s7_score.py [--no-fid] [--trained] [--sdxl] [--ablation] [--transfer]
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
-from s7_quality import CAPTIONS, HOSTS, ROOT, coco_items  # noqa: E402
+from s7_quality import CAPTIONS, ROOT, coco_items  # noqa: E402
 
 from wspd import config  # noqa: E402
 from wspd.metrics import Evaluator, paired_bootstrap  # noqa: E402
@@ -32,6 +32,7 @@ from wspd.model import best_device  # noqa: E402
 
 REAL = CAPTIONS.parent.parent / "val2014"
 FEATS = ROOT.parent / "quality_features"
+OTHER = {"sdxl": "s11_sdxl_quality.json", "ablation": "s12_ablation_quality.json", "transfer": "s13_transfer_quality.json"}
 PICK, PICK_PROCESSOR, CMMD_CLIP = "yuvalkirstain/PickScore_v1", "laion/CLIP-ViT-H-14-laion2B-s32B-b79K", "openai/clip-vit-large-patch14-336"
 
 
@@ -62,6 +63,22 @@ def feats(x) -> torch.Tensor:
     return x if torch.is_tensor(x) else x.pooler_output
 
 
+def pick_scorer(device):
+    """PickScore v1 as a function of a list of images and their prompts."""
+    from transformers import AutoModel, AutoProcessor
+
+    model = AutoModel.from_pretrained(PICK).to(device).eval()
+    proc = AutoProcessor.from_pretrained(PICK_PROCESSOR)
+
+    def score(images: list[Image.Image], prompts: list[str]) -> np.ndarray:
+        inputs = proc(images=images, text=prompts, padding="max_length", truncation=True, max_length=77, return_tensors="pt").to(device)
+        im = F.normalize(feats(model.get_image_features(pixel_values=inputs["pixel_values"])), dim=-1)
+        tx = F.normalize(feats(model.get_text_features(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])), dim=-1)
+        return (model.logit_scale.exp() * (im * tx).sum(-1)).float().cpu().numpy()
+
+    return score
+
+
 def mmd(x: np.ndarray, y: np.ndarray, sigma: float = 10.0) -> float:
     """CMMD (Jayasumana et al., 2024): squared MMD with a Gaussian kernel on unit CLIP embeddings, times 1000."""
     x, y = torch.from_numpy(x).double(), torch.from_numpy(y).double()
@@ -76,10 +93,15 @@ def main() -> None:
     device = best_device()
     # --trained also scores the study 10 arms, on the captions those have (fewer), into its own file.
     trained = "--trained" in sys.argv
-    folders = {p.name: p for p in ROOT.iterdir() if p.is_dir()}
+    # --sdxl, --ablation and --transfer score the study 11, 12 and 13 arms, each with its own feature cache and results file.
+    other = next((k for k in OTHER if f"--{k}" in sys.argv), None)
+    root = ROOT.parent / f"quality_{other}" if other else ROOT
+    tag = f"{other}_" if other else ""
+    folders = {p.name: p for p in root.iterdir() if p.is_dir()}
     if trained:
         folders.update({p.name: p for p in (ROOT.parent / "quality_trained").iterdir() if p.is_dir()})
     arms = sorted(folders)
+    hosts = {a[: -len("_full")] for a in arms if a.endswith("_full")}
     n = min(len(list(folders[a].glob("*.png"))) for a in arms)
     n -= n % 50
     items = coco_items(n)
@@ -92,10 +114,9 @@ def main() -> None:
         return [Image.open(folders[arm] / f"{i:05d}.png").convert("RGB") for i in range(start, stop)]
 
     evaluator = Evaluator(device)
-    from transformers import AutoModel, AutoProcessor, CLIPModel, CLIPProcessor
+    from transformers import CLIPModel, CLIPProcessor
 
-    pick_model = AutoModel.from_pretrained(PICK).to(device).eval()
-    pick_proc = AutoProcessor.from_pretrained(PICK_PROCESSOR)
+    pick = pick_scorer(device)
     big = CLIPModel.from_pretrained(CMMD_CLIP).to(device).eval()
     big_proc = CLIPProcessor.from_pretrained(CMMD_CLIP)
 
@@ -106,15 +127,7 @@ def main() -> None:
         return lambda start, stop: np.concatenate([evaluator.clip_similarity(np.stack([np.asarray(im) for im in load(arm, a, b)]), prompts[a:b]) for a, b in batches(start, stop)])
 
     def pick_score(arm):
-        def compute(start, stop):
-            out = []
-            for a, b in batches(start, stop):
-                inputs = pick_proc(images=load(arm, a, b), text=prompts[a:b], padding="max_length", truncation=True, max_length=77, return_tensors="pt").to(device)
-                im = F.normalize(feats(pick_model.get_image_features(pixel_values=inputs["pixel_values"])), dim=-1)
-                tx = F.normalize(feats(pick_model.get_text_features(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])), dim=-1)
-                out.append((pick_model.logit_scale.exp() * (im * tx).sum(-1)).float().cpu().numpy())
-            return np.concatenate(out)
-        return compute
+        return lambda start, stop: np.concatenate([pick(load(arm, a, b), prompts[a:b]) for a, b in batches(start, stop)])
 
     def embedding(arm):
         def compute(start, stop):
@@ -128,7 +141,7 @@ def main() -> None:
     with torch.no_grad():
         per = {}
         for arm in ["real", *arms]:
-            per[arm] = {"clip": cached("clip", arm, n, clip_score(arm)), "pick": cached("pick", arm, n, pick_score(arm)), "emb": cached("emb", arm, n, embedding(arm))}
+            per[arm] = {"clip": cached(tag + "clip", arm, n, clip_score(arm)), "pick": cached(tag + "pick", arm, n, pick_score(arm)), "emb": cached(tag + "emb", arm, n, embedding(arm))}
             print(f"features {arm}", flush=True)
         results = {}
         for arm in ["real", *arms]:
@@ -137,15 +150,15 @@ def main() -> None:
             if arm != "real":
                 r["cmmd"] = mmd(p["emb"], per["real"]["emb"])
                 r["cmmd_halves"] = [mmd(p["emb"][h::2], per["real"]["emb"][h::2]) for h in (0, 1)]
-            if arm not in ("real", "ref_base25"):
+            if arm not in ("real", "ref_base25") and "ref_base25" in per:
                 r["cmmd_ref"] = mmd(p["emb"], per["ref_base25"]["emb"])
             host = arm.split("_")[0]
-            if host in HOSTS and not arm.endswith("_full"):
+            if host in hosts and not arm.endswith("_full"):
                 full = f"{host}_full"
                 r["clip_minus_full"] = paired_bootstrap(p["clip"] - per[full]["clip"])
                 r["pick_minus_full"] = paired_bootstrap(p["pick"] - per[full]["pick"])
                 r["pick_win_rate_vs_full"] = float((p["pick"] > per[full]["pick"]).mean())
-                r["lpips_full"] = float(cached("lpips_full", arm, n, lambda s, e: evaluator.lpips(np.stack([np.asarray(im) for im in load(arm, s, e)]), np.stack([np.asarray(im) for im in load(full, s, e)]))).mean())
+                r["lpips_full"] = float(cached(tag + "lpips_full", arm, n, lambda s, e: evaluator.lpips(np.stack([np.asarray(im) for im in load(arm, s, e)]), np.stack([np.asarray(im) for im in load(full, s, e)]))).mean())
 
     if "--no-fid" not in sys.argv:
         from cleanfid import fid
@@ -162,7 +175,7 @@ def main() -> None:
         cpu = torch.device("cpu")
         for arm in arms:
             # clean-fid reads a whole folder, so score a folder of links to the first n images.
-            sub = ROOT.parent / "quality_subset" / arm
+            sub = ROOT.parent / f"quality_subset_{tag}" / arm
             if sub.exists():
                 for f in sub.iterdir():
                     f.unlink()
@@ -173,7 +186,7 @@ def main() -> None:
             results[arm]["kid"] = float(fid.compute_kid(str(sub), str(real_dir), device=cpu, num_workers=0, verbose=False))
             print(f"fid {arm} {results[arm]['fid']:.2f} kid {results[arm]['kid']:.4f}", flush=True)
 
-    out = config.RESULTS / "study" / ("s10_quality.json" if trained else "s7_quality.json")
+    out = config.RESULTS / "study" / (OTHER[other] if other else "s10_quality.json" if trained else "s7_quality.json")
     out.write_text(json.dumps({"n_captions": n, "arms": results}, indent=1))
     for arm, r in results.items():
         extra = "".join(f" | {k} {r[k]:.3f}" for k in ("cmmd", "cmmd_ref", "fid", "lpips_full") if k in r)

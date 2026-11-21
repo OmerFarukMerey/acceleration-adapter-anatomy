@@ -2,9 +2,11 @@
 
 First study for the [project proposal](../research_ideas/proposal.md), run on 15 and 16
 November 2026 on one laptop (Apple M4 Pro, 24 GB). It compares nine public few-step
-adapters for Stable Diffusion 1.5 in weight space and in function. Sections 5 to 8 were
-added on 19 and 20 November: other base models, fully fine-tuned models, image-quality
-metrics on COCO captions, and a small training pilot.
+adapters for Stable Diffusion 1.5 in weight space and in function. Sections 5 to 13
+were added from 19 to 21 November: other base models, fully fine-tuned models,
+image-quality metrics on COCO captions, a small training pilot, the function test on SDXL,
+an ablation by block and layer type, a transfer test on held-out captions and the direction
+read from two loss gradients.
 
 ## Findings
 
@@ -42,18 +44,44 @@ metrics on COCO captions, and a small training pilot.
     to 20.90 in 4 steps. A random direction with the same budget reaches 19.76, and a free
     bias with 1.26 million numbers reaches 20.51.
 
+12. **Rank 1 and the constant also work on SDXL.** For LCM, TCD, Hyper-SD and DMD2 on 100
+    captions, one fixed vector per layer stays within 0.15 PickScore points of the full
+    adapter, against 3.5 to 4.9 for removing it.
+
+13. **The acceleration sits in the up blocks.** Removing them loses 81% to 98% of the
+    adapter's PickScore gain in all four methods tested; keeping only them loses at most
+    0.32 points. Convolutions matter most among layer types.
+
+14. **An adapter built from the other methods works on held-out captions.** Direction and
+    strength come from the other four methods, with one scale factor chosen on separate
+    prompts. On 100 COCO captions it is within 0.1 PickScore points of the host's own
+    adapter, or above it, for LCM-LoRA, TCD and Flash Diffusion, and keeps about 70% of the
+    gain for PCM and Hyper-SD. A random direction at the same strength does nothing.
+
+15. **A plain few-step loss points along the shared direction.** At the base weights, the
+    gradient of a simple teacher-matching loss agrees with the direction the five methods
+    share at 0.44, against 0.03 for random directions and 0.04 to 0.06 for style adapters.
+    With strengths trained on this gradient direction PickScore reaches 20.75, against
+    20.90 on the adapters' direction, so the recipe of finding 11 needs no existing adapter.
+    The gradient of LCM's own consistency loss points the same way (0.67 with the plain
+    loss's gradient, 0.40 with the shared direction).
+
 ## How far to trust this
 
 - **Small sample.** 16 prompts and one seed per prompt. No intervals are reported here.
 - **Quality metrics are at 500 captions.** Sections 1 to 4 use recovery and CLIP only.
   Section 7 adds PickScore, CMMD, FID and KID on 500 COCO captions, one seed each. FID at
   500 images is not comparable with published 5,000 or 30,000-image numbers.
-- **Function was tested on one base model.** Sections 5 and 6 compare weights only. No
-  image was generated with SDXL, SD3 or FLUX.
+- **Function was tested on two base models.** SD 1.5 (500 captions) and SDXL (100
+  captions, section 9). SD3 and FLUX are compared in weights only.
 - **The training pilot is small.** 200 training captions, 2 epochs, one seed, learning
   rates not tuned, 100 evaluation captions.
+- **The gradient direction was taken for two losses:** a plain teacher-matching loss
+  (section 12) and LCM's consistency loss (section 13). The adversarial and
+  distribution-matching losses of the other methods are not tested.
 - **Scale factors were chosen on the test prompts.** Finding 5 picks the best of 7 or 8
-  factors on the same 16 prompts, which flatters it.
+  factors on the same 16 prompts, which flatters it. Section 11 repeats the test with the
+  factor chosen on the development prompts and the score taken on COCO captions.
 - **Shared training data is not ruled out.** The methods are independent in starting
   point, but all were trained from the same base model, possibly on overlapping images.
 - **The baseline has no guidance.** "None" is the base model at 4 steps without
@@ -402,7 +430,7 @@ adapter, with paired bootstrap 95% intervals.
 
 The base model is frozen. The teacher is the base model with 20 guided DDIM steps. The
 student takes 4 DDIM steps without guidance and is trained to land on the teacher's state
-at each next step. 200 COCO captions, 2 epochs, about 16 minutes per variant. Scored on 100
+at each next step. 200 COCO captions, 2 epochs unless stated, about 16 minutes per variant. Scored on 100
 held-out captions with the seeds of section 7.
 
 | What is trained | Trained numbers | Loss, first to last 50 | CLIP | PickScore | CMMD |
@@ -411,16 +439,26 @@ held-out captions with the seeds of section 7.
 | Strength per layer and step, shared direction | 1,112 | 0.0058 to 0.0050 | 0.307 | 20.90 | 0.62 |
 | Strength per layer and step, random direction | 1,112 | 0.0092 to 0.0067 | 0.275 | 19.76 | 1.74 |
 | Free vector per layer and step | 1,262,080 | 0.0072 to 0.0059 | 0.295 | 20.51 | 1.14 |
+| Strength per layer and step, shared direction, 8 epochs | 1,112 | 0.0058 to 0.0053 | 0.311 | 21.14 | 0.54 |
+| Free vector per layer and step, 8 epochs | 1,262,080 | 0.0072 to 0.0043 | 0.301 | 20.78 | 0.70 |
 | Scale per layer on the shared rank-1 change | 278 | 0.0064 to 0.0057 | 0.307 | 21.12 | 0.55 |
 | For reference: public adapters, full | 67 million (LCM-LoRA) | | 0.305 to 0.317 | 21.29 to 21.92 | 0.46 to 0.70 |
 
 - **The direction carries most of the work.** With the shared direction given, about a
   thousand numbers bring 4-step sampling to 0.4 to 1.0 PickScore points below the public
   adapters. The same budget on a random direction gets half as far.
-- **Knowing the direction beats a thousand times more free parameters** at this training
-  length. The free vector may catch up with longer training; that was not tested.
+- **Knowing the direction beats a thousand times more free parameters.** With four times
+  the training (8 epochs) the free vector improves from 20.51 to 20.78 and the strengths
+  from 20.90 to 21.14, so the gap stays. The free vector reaches a lower training loss
+  (0.0043 against 0.0053) and still scores lower on held-out captions.
+- **The free vector finds the shared direction only weakly.** Its cosine with the
+  direction the adapters share is 0.13 after one epoch, against 0.02 for a random
+  direction and 0.02 to 0.03 for the style adapters' directions. It does not grow with
+  training: 0.13, 0.12, 0.12, 0.12, 0.11, 0.11, 0.11, 0.11 over eight epochs. Section 12
+  shows that the loss gradient itself does point along the shared direction, so this is a
+  property of how the vector was trained.
 - **The shared direction was computed from the five public adapters**, so this shows that
-  the direction is sufficient, not that it can be found without them.
+  the direction is sufficient. Section 12 finds a usable direction without them.
 - **The trained strengths resemble the adapters' own constants only loosely.** Against
   each adapter's constant projected on the shared direction: correlation 0.23 to 0.44 over
   layers and steps, same sign in 59% to 66% of cases, overall size 0.7 to 1.5 times the
@@ -428,25 +466,294 @@ held-out captions with the seeds of section 7.
 - **The teacher here is guided 20-step sampling**, a simpler target than any of the
   methods' own losses.
 
+## 9. Rank 1 and the constant on SDXL
+
+Sections 1 to 4 and 7 are on SD 1.5. This repeats the function test on SDXL for four
+methods: 100 COCO captions, one seed each, 1024 px, 4 steps without guidance, each adapter
+with the sampler its release recommends. The constants are one fixed vector per layer, the
+same at every step, fitted on the 16 development prompts. Images are scored at 512 px.
+
+![SDXL, three captions. Rows: LCM, TCD, Hyper-SD, DMD2. In each group of four: no adapter, full adapter, top direction only, one constant per layer](../results/study/s11_sdxl.jpg)
+
+*Rows: LCM, TCD, Hyper-SD, DMD2. In each group of four: no adapter, full adapter, top
+direction only, one constant per layer.*
+
+| Method | Version | CLIP | PickScore | CMMD | PickScore minus full | Wins against full |
+|---|---|---:|---:|---:|---|---:|
+| Base SDXL, 4 steps, no adapter (DDIM / LCM / TCD sampler) | | 0.257 / 0.203 / 0.257 | 19.10 / 18.05 / 19.10 | 3.26 / 3.88 / 3.27 | | |
+| LCM | full | 0.320 | 22.39 | 0.66 | | |
+| | rank 1 | 0.320 | 22.43 | 0.62 | +0.04 [-0.04, +0.12] | 0.61 |
+| | constant per layer | 0.322 | 22.44 | 0.51 | +0.05 [-0.07, +0.15] | 0.56 |
+| TCD | full | 0.316 | 22.61 | 0.68 | | |
+| | rank 1 | 0.317 | 22.58 | 0.67 | -0.03 [-0.12, +0.06] | 0.49 |
+| | constant per layer | 0.316 | 22.62 | 0.61 | +0.01 [-0.10, +0.10] | 0.52 |
+| Hyper-SD | full | 0.321 | 23.10 | 0.83 | | |
+| | rank 1 | 0.318 | 22.87 | 0.72 | -0.23 [-0.32, -0.14] | 0.25 |
+| | constant per layer | 0.321 | 22.98 | 0.72 | -0.12 [-0.23, -0.01] | 0.49 |
+| DMD2 | full | 0.325 | 22.94 | 0.53 | | |
+| | rank 1 | 0.326 | 23.10 | 0.52 | +0.16 [+0.07, +0.25] | 0.64 |
+| | constant per layer | 0.329 | 23.09 | 0.51 | +0.15 [+0.04, +0.26] | 0.64 |
+
+- **Both results carry over.** One fixed vector per layer stays within 0.15 PickScore
+  points of the full adapter on all four methods, against 3.5 to 4.9 points for removing
+  the adapter. On DMD2 the rank-1 and constant versions score slightly higher than the
+  full adapter.
+- **Hyper-SD is the only method with a measurable loss:** 0.23 for rank 1 and 0.12 for the
+  constant. It also has the lowest top-direction energy of the four (0.905).
+- **DMD2 was not among the SD 1.5 methods,** so this is also a sixth method for which the
+  constant works.
+- **FID is not reported:** 100 images are too few. PickScore of the real COCO photos on
+  these captions is 21.28.
+- All 788 adapter layers are used; top-direction energy is 0.97, 0.96, 0.91 and 0.97.
+
+## 10. Where the acceleration sits
+
+Parts of each adapter were removed and 4-step images generated for 50 COCO captions (the
+captions and seeds of section 7). Cells give the change in PickScore against the full
+adapter with a paired bootstrap 95% interval, and in brackets the share of the adapter's
+energy that was removed.
+
+| Removed | LCM | TCD | PCM | Hyper-SD |
+|---|---|---|---|---|
+| Everything (no adapter) | -3.53 | -3.04 | -2.80 | -3.08 |
+| Down blocks | +0.01 [-0.20, +0.21] (14%) | -0.17 [-0.31, -0.02] (8%) | -0.12 [-0.31, +0.05] (4%) | -0.25 [-0.47, -0.03] (15%) |
+| Mid block | -0.06 [-0.17, +0.05] (4%) | -0.09 [-0.22, +0.04] (4%) | -0.08 [-0.21, +0.04] (2%) | -0.12 [-0.21, -0.04] (4%) |
+| Up blocks | -3.45 [-3.82, -3.09] (82%) | -2.61 [-2.95, -2.28] (89%) | -2.26 [-2.55, -1.97] (94%) | -2.63 [-2.95, -2.31] (81%) |
+| All but the up blocks | -0.08 [-0.28, +0.12] (18%) | -0.15 [-0.31, +0.00] (11%) | -0.19 [-0.44, +0.06] (6%) | -0.32 [-0.54, -0.12] (19%) |
+| Time projections | +0.10 [+0.00, +0.21] (1%) | -0.01 [-0.05, +0.03] (1%) | -0.00 [-0.10, +0.09] (19%) | +0.09 [+0.00, +0.18] (2%) |
+| Convolutions | -1.21 [-1.48, -0.94] (40%) | -0.72 [-0.98, -0.46] (34%) | -0.47 [-0.72, -0.21] (19%) | -0.38 [-0.61, -0.14] (16%) |
+| Self-attention | +0.13 [-0.01, +0.28] (7%) | +0.04 [-0.07, +0.14] (3%) | +0.11 [-0.00, +0.22] (3%) | -0.00 [-0.11, +0.11] (3%) |
+| Cross-attention | -0.17 [-0.40, +0.08] (6%) | -0.07 [-0.20, +0.06] (13%) | -0.21 [-0.35, -0.09] (8%) | -0.13 [-0.30, +0.04] (14%) |
+| Feed-forward | -0.38 [-0.56, -0.19] (38%) | -0.15 [-0.31, +0.00] (46%) | -0.19 [-0.42, +0.05] (49%) | -0.06 [-0.29, +0.18] (61%) |
+| Attention in/out projections | +0.05 [-0.10, +0.23] (7%) | +0.01 [-0.10, +0.11] (4%) | +0.06 [-0.06, +0.17] (3%) | +0.13 [-0.08, +0.32] (3%) |
+
+- **The up blocks carry the acceleration in all four methods.** Removing them loses 81%
+  to 98% of the adapter's gain. Keeping only them loses 0.08 to 0.32 points.
+- **Convolutions matter most among layer types,** in every method, and more than their
+  energy share suggests in LCM and TCD.
+- **Feed-forward layers hold 38% to 61% of the energy and can mostly be removed** (0.06 to
+  0.38 points). Energy is a poor guide to importance by layer type.
+- **Self-attention, the attention projections and the time projections can be removed
+  with no measurable loss,** including PCM's time projections, which hold 19% of its energy.
+- The four methods agree on the location as well as on the direction.
+
+## 11. A direction from other methods, on held-out captions
+
+Section 3 swapped directions on the 16 development prompts and chose the scale factor on
+those same prompts. Here the choice and the test are separated. The one free number is
+picked on the development prompts, by PickScore, from eight values between 0.15 and 2.0.
+The result is scored on 100 COCO captions (those of section 7, same seeds), 4 steps without
+guidance, each host with its own sampler. Two versions per host:
+
+- **Other methods' direction, host's strength:** the direction the other four methods agree
+  on, at the host adapter's per-layer strength times the factor.
+- **Leave-one-out adapter:** that direction at the other four methods' own mean strength,
+  times the factor. Nothing of the host is used except its sampler.
+
+![Three captions. Rows: LCM, TCD, PCM, Hyper-SD, Flash as host. In each group of three: no adapter, the host's full adapter, the leave-one-out adapter built from the other four methods](../results/study/s13_transfer.jpg)
+
+*Rows: LCM, TCD, PCM, Hyper-SD, Flash as host. In each group of three: no adapter, the
+host's full adapter, the leave-one-out adapter built from the other four methods.*
+
+PickScore, and the difference to the host's full adapter with a paired bootstrap 95%
+interval:
+
+| Host (sampler) | No adapter | Full adapter | All but the top direction | Random direction | Other methods' direction, host's strength | Leave-one-out adapter | Gain kept by leave-one-out |
+|---|---:|---:|---:|---:|---|---|---:|
+| LCM-LoRA (LCM) | 17.87 | 21.29 | -3.40 | -3.43 | -0.11 [-0.25, +0.03] | +0.10 [-0.09, +0.29] | 103% |
+| TCD (TCD) | 18.35 | 21.42 | -2.91 | -3.07 | +0.17 [+0.06, +0.27] | +0.17 [+0.06, +0.27] | 105% |
+| PCM (DDIM) | 18.78 | 21.70 | -2.47 | -2.92 | -0.76 [-0.93, -0.59] | -0.78 [-0.96, -0.61] | 73% |
+| Hyper-SD (DDIM) | 18.78 | 21.92 | -2.46 | -3.14 | -0.97 [-1.14, -0.79] | -1.01 [-1.18, -0.83] | 68% |
+| Flash Diffusion (LCM) | 17.87 | 21.50 | -3.61 | -3.63 | -1.49 [-1.71, -1.27] | -0.09 [-0.27, +0.08] | 97% |
+
+Factors chosen on the development prompts: 1.4, 0.7, 0.25, 0.25, 0.7 for the host's
+strength and 1.4, 0.7, 0.5, 0.5, 1.0 for the leave-one-out adapter. Every curve has its
+maximum inside the range tried.
+
+- **An adapter built only from other methods matches the host's own on three of five
+  hosts.** For LCM-LoRA, TCD and Flash Diffusion the leave-one-out adapter is within 0.1
+  points of the full adapter or above it. The host's weights never entered.
+- **On PCM and Hyper-SD it keeps about 70% of the gain:** 0.78 and 1.01 points below the
+  full adapter, 2.1 points above no adapter. These are the two hosts sampled with DDIM.
+- **The direction matters, the strength profile hardly.** With the host's per-layer
+  strengths or the other methods' mean strengths the scores are equal on TCD, PCM and
+  Hyper-SD (differences of 0.00 to 0.04, intervals include zero).
+- **Flash Diffusion needs all layers.** Its own adapter covers 128 attention layers. The
+  other methods' direction on those layers loses 1.49 points; the leave-one-out adapter,
+  which covers all 278 layers, loses 0.09.
+- **Controls.** A random direction at the same strength scores the same as no adapter, to
+  0.01 points. All but the top direction keeps 1% to 22% of the gain.
+- **Distance to the COCO photos stays close:** CMMD of the leave-one-out adapter is 0.47
+  to 0.60, against 0.46 to 0.70 for the full adapters (up to 0.08 higher on four hosts,
+  lower on Hyper-SD).
+- **Limits.** 100 captions, one seed. One number per host is still tuned, on other prompts.
+  Samplers are not independent of methods: except for TCD, each host's sampler is also the
+  recommended one for one of the other four adapters.
+
+## 12. The direction without any adapter
+
+Section 8 took the direction from the public adapters. Here it comes from the base model
+alone. For the training loss of section 8 (4 DDIM steps without guidance, each matched to
+the 20-step guided teacher), the gradient with respect to every layer's weight was averaged
+over the 200 training captions at the base weights. No training step is taken. The top
+singular direction of the negative gradient is the best rank-1 first-order change to that
+layer. It is compared with the adapters as in section 2.
+
+| Gradient direction against | Output-side agreement | Input-side agreement | Layers where the change goes down the gradient |
+|---|---:|---:|---:|
+| The direction the five methods share | 0.44 | 0.60 | 95% |
+| LCM-LoRA | 0.44 | 0.61 | 95% |
+| TCD | 0.43 | 0.46 | 96% |
+| PCM (4-step, LCM-like) | 0.33, 0.35 | 0.37, 0.40 | 92%, 93% |
+| Flash Diffusion | 0.30 | 0.30 | 88% |
+| Hyper-SD 1, 2, 4, 8-step | 0.29, 0.28, 0.26, 0.24 | 0.35 to 0.39 | 85% to 86% |
+| Fully fine-tuned: DMD2, LCM, 2-rectified flow | 0.19, 0.18, 0.11 | 0.33, 0.37, 0.12 | 76%, 79%, 59% |
+| Style adapters (3) | 0.04 to 0.06 | 0.11 to 0.21 | 36% to 52% |
+| Random directions | 0.03 | | 50% |
+| Same pairs, layers of equal shape mismatched | 0.02 to 0.03 | | |
+
+- **A plain few-step loss points along the shared direction.** Its gradient agrees with the
+  direction the five methods share at 0.44 (0.45 in the median layer), against 0.03 for
+  random directions and 0.04 to 0.06 for style adapters. Against single adapters it is 0.24
+  to 0.44, where two independent methods agree with each other at 0.29 to 0.76: the gradient
+  behaves like one more method, somewhat further away. Nothing from any adapter went into it.
+- **The sign is right.** In 85% to 96% of layers the adapters moved down this gradient and
+  not up it. For style adapters it is 36% to 52%, around chance.
+- **It is closest to the consistency methods** (LCM-LoRA 0.44, TCD 0.43) **and furthest from
+  Hyper-SD** (0.24 to 0.29), whose training adds adversarial and human-preference losses.
+  The loss used here, matching a guided teacher, is closest in kind to consistency training.
+- **The gradient is itself concentrated.** Its top direction holds 67% of its energy in the
+  median layer (83% at the first step).
+- **Summing the steps helps.** One step's gradient agrees with the shared direction at 0.27,
+  0.38, 0.37 and 0.27 (steps 1 to 4); the sum reaches 0.44. Neighbouring steps' gradients
+  agree at 0.43 to 0.69, the first and last at 0.18.
+- **It holds across the network:** 0.36 in the down blocks, 0.41 in the mid block, 0.47 in
+  the up blocks, and 0.39 to 0.50 for every layer type.
+- **It does not depend on which captions are used.** The directions from the even-numbered
+  and from the odd-numbered captions agree at 0.92 (0.96 in the median layer), and each half
+  agrees with the shared direction at 0.44. More captions would not raise that number.
+
+**Training on it.** Section 8's strengths were trained again with this direction in place of
+the adapters' one: same captions, epochs and learning rate, same 100 held-out captions.
+
+| What is trained | Trained numbers | Adapters used | CLIP | PickScore | CMMD |
+|---|---:|---|---:|---:|---:|
+| Nothing (same sampler) | 0 | none | 0.250 | 18.77 | 2.39 |
+| Strength per layer and step, random direction | 1,112 | none | 0.275 | 19.76 | 1.74 |
+| Free vector per layer and step | 1,262,080 | none | 0.295 | 20.51 | 1.14 |
+| **Strength per layer and step, gradient direction** | 1,112 | none | 0.302 | 20.75 | 0.96 |
+| Strength per layer and step, shared direction | 1,112 | five | 0.307 | 20.90 | 0.62 |
+| **Scale per layer on the gradient's rank-1 change** | 278 | none | 0.297 | 20.62 | 0.95 |
+| Scale per layer on the shared rank-1 change | 278 | five | 0.307 | 21.12 | 0.55 |
+
+- **The gradient direction gives 93% of the shared direction's gain** (1.98 of 2.13
+  PickScore points). It is 0.15 below the shared direction [0.04, 0.26], 0.99 above a random
+  direction [0.84, 1.15] and 0.24 above the free vector [0.12, 0.36], which has a thousand
+  times more trained numbers.
+- **So the recipe needs no existing adapter:** one gradient pass over 200 captions (11
+  minutes on the laptop) for the direction, then 1,112 trained numbers.
+- **The adapters' direction is still better.** CMMD is 0.96 against 0.62, and the rank-1
+  version loses 0.5 points to the shared one (20.62 against 21.12). The gradient at the
+  base weights is a first step toward the direction the methods end on, not the same thing.
+- **Limits.** One loss, one teacher, 200 captions, one seed. The gradient and the strengths
+  use the same 200 captions; the scores are on 100 other captions.
+
+**Why the free vector of section 8 missed it.** The gradient for a vector added to each
+layer's output was taken in the same way.
+
+| Vector per layer | Agreement with the shared direction | Random |
+|---|---:|---:|
+| Loss gradient, summed over steps | 0.56 (median layer 0.43) | 0.04 |
+| Loss gradient, steps 1 to 4 | 0.19, 0.37, 0.50, 0.53 | 0.04 |
+| Sign of the loss gradient, steps 1 to 4 | 0.22, 0.28, 0.25, 0.17 | 0.04 |
+| Free vector after training (section 8), 1 to 8 epochs | 0.13 to 0.11 | 0.02 |
+
+- **The loss does point a free vector toward the shared direction** (0.56), and that
+  gradient is nearly the weight gradient's output direction (cosine 0.97 in the median layer).
+- **The trained vector moved away from it.** It was trained with Adam, one vector per step.
+  Adam's first update keeps only the sign of each coordinate, which alone gives 0.17 to
+  0.28. After training, the vector's cosine with its own step's gradient is 0.21 to 0.27
+  (0.16 to 0.22 after 8 epochs).
+- So the low value in section 8 comes from how the vector was trained, not from the loss.
+  Training it with plain gradient descent was not tried.
+
+## 13. The same test with a method's own loss
+
+Section 12 used a plain loss. Here the loss is latent consistency distillation as in the
+diffusers LCM-LoRA training script, with its default settings: a guided teacher takes one
+DDIM solver step (50 solver steps, guidance scale drawn from 5 to 15), and the student must
+predict the same clean latent from both ends. At the base weights the adapter is zero, so
+student, teacher and target are all the base model and no trained adapter is involved. The
+gradient is averaged over 400 COCO photos with their captions (used for no score), each with
+one random timestep.
+
+| Consistency-loss gradient against | Output-side agreement | Input-side agreement | Layers where the change goes down the gradient |
+|---|---:|---:|---:|
+| The plain loss's gradient (section 12) | 0.67 | 0.87 | 99% |
+| The direction the five methods share | 0.40 | 0.59 | 96% |
+| LCM-LoRA | 0.40 | 0.61 | 95% |
+| TCD | 0.38 | 0.45 | 97% |
+| PCM (4-step, LCM-like) | 0.27, 0.30 | 0.34, 0.40 | 95%, 94% |
+| Flash Diffusion | 0.22 | 0.30 | 82% |
+| Hyper-SD 1, 2, 4, 8-step | 0.24, 0.24, 0.22, 0.19 | 0.33 to 0.38 | 82% to 85% |
+| Style adapters (3) | 0.04 to 0.05 | 0.09 to 0.20 | 38% to 67% |
+| Random directions | 0.03 | | 50% |
+
+- **Two different losses point the same way.** The consistency loss's gradient agrees with
+  the plain loss's at 0.67 (0.71 in the median layer). Its own two halves, from even and odd
+  images, agree at 0.69, so 0.67 is about as high as 400 images can show. The two losses
+  share little else: one noises real photos to random timesteps and takes one solver step,
+  the other follows a 20-step teacher from pure noise at four fixed timesteps.
+- **Both agree with the adapters at about 0.4** (0.40 and 0.44 with the shared direction),
+  and they order the methods alike: LCM-LoRA and TCD closest, Hyper-SD furthest.
+- **LCM-LoRA is no closer to its own loss's gradient** (0.40) than to the plain loss's
+  (0.44), and both are well below its agreement with TCD (0.76). The adapters share more
+  with each other than with either first gradient. The first gradient explains part of the
+  shared direction, not all of it.
+
+**The released adapters do not sit at a lower value of this loss.** With an adapter
+installed in student and target, as in training, the loss on 200 of the images is 3.6
+(LCM-LoRA), 3.8 (TCD), 4.2 (Flash), 9.5 (PCM) and 25 (Hyper-SD) times the base model's. For
+the style adapters it is 0.85 to 1.13 times. Along the line from the base model to LCM-LoRA
+(100 images, loss times 1000):
+
+| Fraction of LCM-LoRA installed | 0 | 0.02 | 0.05 | 0.1 | 0.2 | 0.5 | 1 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Target moves with the student (as in training) | 3.53 | 3.59 | 3.69 | 3.85 | 4.18 | 5.64 | 14.98 |
+| Target fixed at the base model | 3.53 | 3.29 | 2.97 | 2.60 | 2.54 | 11.47 | 86.05 |
+
+- **Against a fixed target, a small step along LCM-LoRA lowers the loss,** by 28% at a
+  fifth of the adapter. That is the case the gradient describes, and it confirms that the
+  adapter's direction is a descent direction of this loss. The full adapter is several
+  times past that point.
+- **With the target moving, the loss rises from the first step.** This loss compares the
+  model with itself at a neighbouring timestep. Our reading: the base model's blurry
+  predictions at neighbouring timesteps already resemble each other, so the value of the
+  loss does not measure how good a few-step model is. Its gradient direction is what carries
+  over to the adapters.
+- **Limits.** One method's loss, with the script's defaults, which may differ from the
+  settings behind the released LCM-LoRA. 400 images, one timestep each. The adversarial and
+  distribution-matching losses of the other methods are not tested.
+
 ## What this means for the proposal
 
 | Earlier hypothesis (second version) | Result at this scale |
 |---|---|
 | Other adapters are also near rank 1 | Held for all five methods on prompt alignment |
 | Output directions agree across methods | Held: 0.29 to 0.76 against 0.02 to 0.07 for controls |
-| The agreement is functional | Partly: a swap needs a scale factor |
-| Location agrees across adapters | Held on energy (decoder 80% to 94%); ablation not repeated |
-| A shared direction is usable | Held on prompt alignment for three of four hosts, with one scale |
+| The agreement is functional | Held on three of five hosts and partly on two, with one scale factor chosen on other prompts (section 11) |
+| Location agrees across adapters | Held on energy (decoder 80% to 94%) and by ablation on four methods (section 10) |
+| A shared direction is usable | Held on prompt alignment for three of four hosts, with one scale; on PickScore for held-out captions in section 11 |
 
 New at this stage, and not in any earlier version: the constant-per-layer result and the
 guidance comparison. The third version of the proposal is built around them.
 
-| Hypothesis in the one-page proposal | Status after sections 5 to 8 |
+| Hypothesis in the one-page proposal | Status after sections 5 to 13 |
 |---|---|
 | H1: one direction per layer | Held for the LoRAs on four base models; not for full fine-tunes |
-| H2: independent methods agree | Held on four base models and against full fine-tunes |
-| H3: a fixed vector per layer | Held for four of five methods at 500 captions: 0.01 to 0.15 PickScore lower, FID not worse |
-| H4: train only the strength | Pilot positive; direction still taken from existing adapters |
+| H2: independent methods agree | Held on four base models and against full fine-tunes. In function, an adapter built from the other four methods matches the host's own on three of five methods and keeps about 70% of the gain on two |
+| H3: a fixed vector per layer | Held for four of five methods on SD 1.5 (500 captions) and four of four on SDXL (100 captions) |
+| H4: train only the strength | Pilot positive. The direction can be read from a loss gradient at the base weights instead of from adapters (PickScore 20.75 against 20.90) |
 
 ## Reproduce
 
@@ -465,6 +772,15 @@ guidance comparison. The third version of the proposal is built around them.
 .venv/bin/python scripts/study/s10_train_shift.py    # section 8
 .venv/bin/python scripts/study/s7_score.py                      # scores section 7
 .venv/bin/python scripts/study/s7_score.py --no-fid --trained   # scores section 8
+.venv/bin/python scripts/study/s11_sdxl.py 100 25    # section 9 images; SDXL base, about 7 GB
+.venv/bin/python scripts/study/s7_score.py --sdxl    # scores section 9
+.venv/bin/python scripts/study/s12_ablation.py 50    # section 10 images
+.venv/bin/python scripts/study/s7_score.py --no-fid --ablation  # scores section 10
+.venv/bin/python scripts/study/s13_transfer.py 100 50           # section 11 images
+.venv/bin/python scripts/study/s7_score.py --no-fid --transfer  # scores section 11
+.venv/bin/python scripts/study/s14_gradient.py                  # section 12; no image generation
+.venv/bin/python scripts/study/s10_train_shift.py gradient gradrank1  # section 12 training; score with --trained
+.venv/bin/python scripts/study/s15_loss_gradient.py 400 200     # section 13; needs the COCO photos
 ```
 
 The first run downloads about 2 GB of adapters from Hugging Face. The image-generating
