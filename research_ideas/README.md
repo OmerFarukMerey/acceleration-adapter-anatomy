@@ -5,7 +5,7 @@ The term project follows one idea. This folder holds the plan; the results are i
 
 | File | What it is |
 |---|---|
-| [proposal.md](proposal.md) | The project proposal (third version): questions, hypotheses, plan, division of work, timeline |
+| [proposal.md](proposal.md) | The project proposal (third version): questions, hypotheses, plan, order of work, timeline |
 | [plan-explained.md](plan-explained.md) | The same plan in plain language, for a newcomer to generative AI |
 | [study-guide.md](study-guide.md) | Reading list and reading order |
 | [../docs/LITERATURE_REVIEW.md](../docs/LITERATURE_REVIEW.md) | Background and related work |

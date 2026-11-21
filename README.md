@@ -82,7 +82,7 @@ direction under other losses. A decision point is set for 6 December 2026.
 
 | Read | For |
 |---|---|
-| [`research_ideas/proposal.md`](research_ideas/proposal.md) | Questions, hypotheses, plan, division of work and timeline |
+| [`research_ideas/proposal.md`](research_ideas/proposal.md) | Questions, hypotheses, plan, order of work and timeline |
 | [`docs/RESULTS.md`](docs/RESULTS.md) | Every result so far, with tables, images and limits |
 | [`research_ideas/plan-explained.md`](research_ideas/plan-explained.md) | The plan in plain language |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Background and related work |

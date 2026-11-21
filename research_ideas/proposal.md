@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Authors | Ömer Faruk Merey and a second team member (name to be added) |
+| Author | Ömer Faruk Merey (individual project) |
 | Course | Generative Models for Multimedia, METU |
 | Date | 16 November 2026 (third version; earlier versions 11 and 15 November) |
 | Status | Draft for discussion with the course advisor |
@@ -159,15 +159,17 @@ Full tables, images and limits are in [`docs/RESULTS.md`](../docs/RESULTS.md).
 - **Held-out prompts** for anything estimated from data, and 3 seeds with intervals.
 - **A guided baseline** (base model with guidance at the same step count).
 
-## Division of work
+## Order of work
 
-| Person | Takes | First task |
+The project is done by one person, in two tracks:
+
+| Track | Covers | First task |
 |---|---|---|
-| A | Universality: scale-up, SDXL, transformer model, quality metrics | Build the 5,000-caption evaluation and rerun the SD 1.5 study on it |
-| B | Mechanism and use: constant shift, guidance, scale fitting, training | Rerun the constant-shift test by layer type; set up scale fitting |
+| Universality | Scale-up, SDXL, transformer model, quality metrics | Build the 5,000-caption evaluation and rerun the SD 1.5 study on it |
+| Mechanism and use | Constant shift, guidance, scale fitting, training | Rerun the constant-shift test by layer type; set up scale fitting |
 
-Both read WaDi, the intruder-dimensions paper and MTEO in the first week, and fix the
-thresholds above with the advisor.
+The first week goes to reading WaDi, the intruder-dimensions paper and MTEO, and to fixing
+the thresholds above with the advisor.
 
 ## Timeline
 
@@ -242,7 +244,6 @@ handful of searches, not proof.
   small scale, so the plan moves on to explaining and using the result.
 - Two questions are added: mechanism and use.
 - The adapter set grew from one to nine, with three style adapters as controls.
-- The work is split between two people.
 
 ## Relation to the original course proposal
 

@@ -2,7 +2,7 @@
 
 **Few-step sampling in diffusion models as a shared, nearly constant weight shift**
 
-Ömer Faruk Merey, Osman Semih Tiryaki · Generative Models for Multimedia, METU · November 2026
+Ömer Faruk Merey · Generative Models for Multimedia, METU · November 2026
 
 ## 1. Scientific question
 
