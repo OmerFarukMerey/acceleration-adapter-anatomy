@@ -1,4 +1,4 @@
-"""Deterministic prompt splits: dev for the operator, two sealed test splits."""
+"""Deterministic prompt splits. The studies use the dev split; the two test splits are unused."""
 from __future__ import annotations
 
 import hashlib

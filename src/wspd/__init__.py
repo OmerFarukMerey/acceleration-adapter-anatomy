@@ -1,1 +1,1 @@
-"""Weight-space programming for few-step diffusion."""
+"""Shared helpers for the adapter studies: paths, development prompts, metrics, device lock."""

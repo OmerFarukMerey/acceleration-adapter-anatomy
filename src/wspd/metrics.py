@@ -1,4 +1,4 @@
-"""Image-quality metrics, all measured against the same-seed 50-step reference.
+"""Image-quality metrics, all measured against a same-seed reference image.
 
 Several metrics are needed because they fail differently. Band deficits see
 lost energy but cannot tell real texture from added noise. LPIPS sees structure
