@@ -5,9 +5,11 @@ thing? Few-step distillation is often shipped as a low-rank weight change on a b
 such as LCM-LoRA. This repo takes those changes apart in weight space and compares them
 across methods.
 
-It is a term project for Generative Models for Multimedia at METU. The proposal is in
-[`research_ideas/proposal.md`](research_ideas/proposal.md) and the results so far are in
-[`docs/RESULTS.md`](docs/RESULTS.md).
+It is an individual term project for Generative Models for Multimedia at METU. The
+one-page course proposal is
+[`research_ideas/proposal-one-page.pdf`](research_ideas/proposal-one-page.pdf), the long
+version is [`research_ideas/proposal.md`](research_ideas/proposal.md), and the results so
+far are in [`docs/RESULTS.md`](docs/RESULTS.md). Last updated 24 November 2026.
 
 ## Current direction
 
@@ -15,9 +17,9 @@ It is a term project for Generative Models for Multimedia at METU. The proposal 
 SD3 Medium and FLUX.1-dev and against fully fine-tuned models; quality metrics, a
 transfer test and a training pilot are at 500 and 100 COCO captions.**
 
-The study compares nine public acceleration adapters from five independent methods (LCM,
-TCD, PCM, Hyper-SD, Flash Diffusion), with three style adapters as controls. It uses 4
-steps, 16 prompts and one seed.
+The first study compares nine public acceleration adapters from five independent methods
+(LCM, TCD, PCM, Hyper-SD, Flash Diffusion), with three style adapters as controls. It uses
+4 steps, 16 prompts and one seed:
 
 - **Each adapter is close to one direction per layer.** The strongest of 64 directions
   holds 93% to 98% of the energy and keeps the full adapter's prompt alignment.
@@ -26,6 +28,9 @@ steps, 16 prompts and one seed.
 - **The direction acts almost like a constant.** One fixed vector added to each layer's
   output, the same for every prompt and step, keeps prompt alignment within 0.003 of the
   full adapter in four of five methods.
+
+The later studies (19 to 21 November) add other base models, quality metrics on COCO
+captions, a transfer test, a training pilot and the origin of the direction:
 
 - **The agreement holds on other base models.** 0.14 to 0.68 on SDXL (8 methods), 0.15 to
   0.30 on SD3 Medium, 0.20 to 0.49 on FLUX.1-dev; controls at or below 0.10.
@@ -76,24 +81,29 @@ layer and step, coefficient averaged over positions, top direction only, full ad
 
 The table above is prompt alignment on 16 prompts. On 500 COCO captions (section 7 of the
 results) one constant per layer costs 0.01 to 0.15 PickScore points on four of five
-methods, against 2.8 to 3.4 for removing the adapter, with FID not worse. The
-next steps are FID at 5,000 captions, function tests on SD3 and FLUX, and the gradient
-direction under other losses. A decision point is set for 6 December 2026.
+methods, against 2.8 to 3.4 for removing the adapter, with FID not worse.
+
+**Not done yet:** FID on 5,000 captions with several seeds, function tests on SD3 and
+FLUX, and the gradient direction under adversarial and distribution-matching losses. These
+need a GPU. The current step is reading the closest papers
+([study guide](research_ideas/study-guide.md)). A decision point is set for 6 December
+2026.
 
 | Read | For |
 |---|---|
-| [`research_ideas/proposal.md`](research_ideas/proposal.md) | Questions, hypotheses, plan, order of work and timeline |
+| [`research_ideas/proposal-one-page.pdf`](research_ideas/proposal-one-page.pdf) | The one-page course proposal |
+| [`research_ideas/proposal.md`](research_ideas/proposal.md) | Questions, hypotheses with their current state, plan, timeline and risks |
 | [`docs/RESULTS.md`](docs/RESULTS.md) | Every result so far, with tables, images and limits |
-| [`research_ideas/plan-explained.md`](research_ideas/plan-explained.md) | The plan in plain language |
+| [`research_ideas/plan-explained.md`](research_ideas/plan-explained.md) | The plan and findings in plain language |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Background and related work |
-| [`research_ideas/study-guide.md`](research_ideas/study-guide.md) | Reading list and reading order |
+| [`research_ideas/study-guide.md`](research_ideas/study-guide.md) | What to read, in what order, and what to look for |
 
 ## Reproduce
 
 Tested on an Apple M4 Pro with 24 GB, on MPS at batch size 1.
 
 ```bash
-python3.13 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+python3.13 -m venv .venv && .venv/bin/pip install -e '.[dev,study]'
 .venv/bin/pytest
 
 .venv/bin/python scripts/study/s1_weights.py     # weight comparison; no image generation
@@ -101,26 +111,23 @@ python3.13 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python scripts/study/s3_mechanism.py   # constant-shift and guidance tests
 ```
 
-The scripts need Stable Diffusion 1.5 and download about 2 GB of adapters on first use.
-The full list of scripts and their run time is at the end of
+These three need Stable Diffusion 1.5 and download about 2 GB of adapters on first use.
+The later scripts also need other base models and the MS-COCO 2014 validation captions and
+photos. The full list of scripts, in order, is at the end of
 [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ## Layout
 
 ```
-research_ideas/              Proposal, plain-language plan and study guide
-docs/RESULTS.md              Results of the first study
+research_ideas/              Proposals, plain-language plan and study guide
+docs/RESULTS.md              All results so far (sections 1 to 13)
 docs/LITERATURE_REVIEW.md    Background and related work
-scripts/study/               The cross-method study (adapters.py holds the adapter list)
-results/study/               Its outputs: JSON tables and image sheets
-scripts/pilots/              Earlier pilots, including the first LCM-LoRA dissection
+scripts/study/               The studies, s1 to s15 (adapters.py holds the adapter list)
+results/study/               Their outputs: JSON tables, figures and image sheets
+scripts/pilots/              The first LCM-LoRA dissection and its controls
 results/pilots/              Their outputs
-src/wspd/metrics.py          LPIPS, CLIP and spectral metrics
-docs/EXPERIMENT_1.md         The project's earlier experiment, kept as a record
+src/wspd/                    Shared helpers: paths, development prompts, metrics
+data/prompts_pool.json       The pool the 16 development prompts are drawn from
+tests/                       Fast checks that need no model download
 runs/                        Caches and generated images (gitignored)
 ```
-
-## Earlier work
-
-The repo began with a different experiment, on LLM-driven weight editing. Its write-up,
-code and results are kept in [`docs/EXPERIMENT_1.md`](docs/EXPERIMENT_1.md).

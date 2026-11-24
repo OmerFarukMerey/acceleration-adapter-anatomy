@@ -1,51 +1,49 @@
 # Research direction: what acceleration adapters have in common
 
 The term project follows one idea. This folder holds the plan; the results are in
-[`../docs/RESULTS.md`](../docs/RESULTS.md).
+[`../docs/RESULTS.md`](../docs/RESULTS.md). Last updated 24 November 2026.
 
 | File | What it is |
 |---|---|
-| [proposal.md](proposal.md) | The project proposal (third version): questions, hypotheses, plan, order of work, timeline |
-| [plan-explained.md](plan-explained.md) | The same plan in plain language, for a newcomer to generative AI |
-| [study-guide.md](study-guide.md) | Reading list and reading order |
+| [proposal-one-page.pdf](proposal-one-page.pdf) | The one-page course proposal, due 22 November 2026. Source: [proposal-one-page.md](proposal-one-page.md) |
+| [proposal.md](proposal.md) | The long proposal (fourth version): questions, hypotheses with their current state, plan, timeline, risks |
+| [plan-explained.md](plan-explained.md) | The same plan and findings in plain language, for a newcomer to generative AI |
+| [study-guide.md](study-guide.md) | What to read, in what order, and what to look for |
 | [../docs/LITERATURE_REVIEW.md](../docs/LITERATURE_REVIEW.md) | Background and related work |
-| [pilots.md](pilots.md) | How the earlier pilot experiments were run |
+| [pilots.md](pilots.md) | The LCM-LoRA pilot that started the project, and its controls |
 | [01-anatomy-of-acceleration-adapters.md](01-anatomy-of-acceleration-adapters.md) | The idea as first written on 11 November, kept as a record |
 
 ## The idea in one paragraph
 
 Few-step distillation is shipped as a low-rank weight change on a base model, such as
-LCM-LoRA. In nine public adapters from five independent methods, one direction per layer
-carries the effect, the methods partly agree on that direction, and the direction acts
-almost like a constant added to each layer's output. The project asks whether few-step
-ability is one shared, simple change to the model, what that change is, and whether it
-can be obtained without full distillation.
-
-## How this follows from the first experiment
-
-The first experiment in this repo asked whether an LLM could edit denoiser weights to fix
-few-step sampling. It could, but only by rediscovering known sampler corrections, and a
-blind search did as well. The weight-space question that survived is a different one: not
-"can an LLM read weights" but "what does a trained few-step delta look like". That needs no
-LLM and no claim the course advisor doubted.
+LCM-LoRA. In public adapters from independent methods, one direction per layer carries
+the effect, the methods partly agree on that direction on four base models, and the
+direction acts almost like a constant added to each layer's output. An adapter built only
+from other methods works, a thousand trained strengths on the shared direction give
+few-step sampling, and the direction can be read from a loss gradient on the base model
+alone. The project asks whether few-step ability is one shared, simple change to the
+model, what that change is, and whether it can be obtained without full distillation.
 
 ## Deadlines
 
-From a literature search on 2026-11-10. Only SIGGRAPH is official; the rest are estimates
-from earlier years.
+Checked by web search on 24 November 2026. Confirm each on the conference's own site
+before planning around it.
 
-| Venue | Full paper |
-|---|---|
-| SIGGRAPH 2027 | 28 Jan 2027 |
-| ICML 2027 | late Jan to early Feb 2027 |
-| ICCV 2027 | first week of Mar 2027 |
-| NeurIPS 2027 | early to mid May 2027 |
+| Venue | Full paper | Source |
+|---|---|---|
+| ICML 2027 (Rio de Janeiro) | 22 January 2027; abstracts 14 January | icml.cc, as reported by the search |
+| SIGGRAPH 2027 (Anaheim, 8-12 August) | Not announced. In 2026 it was 22 January | An earlier note here gave 28 January 2027 as official; this search could not confirm it |
+| ICCV 2027 (Hong Kong, 2-8 October) | Not announced. In 2025 it was 7 March | Estimate from the previous cycle |
+| NeurIPS 2027 (Europe) | Not announced. In 2026 it was 6 May | Estimate from the previous cycle |
 
 ## Caveats
 
-- Papers dated 2025-2026 come from automated literature searches and have not been read
-  in full by us. Read them before writing related work.
-- The first study used 16 prompts, one seed and one base model, and measured prompt
-  alignment and closeness to the full adapter's image, not image quality.
-- Four other directions were considered and dropped on 2026-11-11. Their pilot scripts and
-  outputs are still in `scripts/pilots/` and `results/pilots/`, described in pilots.md.
+- No paper had been read in full by the author on 24 November. Several were read by an
+  automated reader, the rest are known from abstracts and searches. The reading plan is
+  in the study guide.
+- Results are at small scale: 16 prompts for the first study, 50 to 500 COCO captions for
+  the later ones, one seed. FID on 5,000 captions and function tests on SD3 and FLUX are
+  not done.
+- The project's first experiment, on LLM-driven weight editing, and the pilots of four
+  directions dropped on 2026-11-11 were removed from the repository on 24 November 2026.
+  They remain in its git history.

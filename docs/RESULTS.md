@@ -1,9 +1,9 @@
 # Study results: what acceleration adapters have in common
 
-First study for the [project proposal](../research_ideas/proposal.md), run on 15 and 16
-November 2026 on one laptop (Apple M4 Pro, 24 GB). It compares nine public few-step
-adapters for Stable Diffusion 1.5 in weight space and in function. Sections 5 to 13
-were added from 19 to 21 November: other base models, fully fine-tuned models,
+Results for the [project proposal](../research_ideas/proposal.md), all run on one laptop
+(Apple M4 Pro, 24 GB). The first study, of 15 and 16 November 2026, compares nine public
+few-step adapters for Stable Diffusion 1.5 in weight space and in function (sections 1 to
+4). Sections 5 to 13 were added from 19 to 21 November: other base models, fully fine-tuned models,
 image-quality metrics on COCO captions, a small training pilot, the function test on SDXL,
 an ablation by block and layer type, a transfer test on held-out captions and the direction
 read from two loss gradients.
@@ -68,7 +68,8 @@ read from two loss gradients.
 
 ## How far to trust this
 
-- **Small sample.** 16 prompts and one seed per prompt. No intervals are reported here.
+- **Small samples.** Sections 1 to 4 use 16 prompts and one seed, with no intervals. The
+  later sections use 50 to 500 COCO captions and one seed, with paired bootstrap intervals.
 - **Quality metrics are at 500 captions.** Sections 1 to 4 use recovery and CLIP only.
   Section 7 adds PickScore, CMMD, FID and KID on 500 COCO captions, one seed each. FID at
   500 images is not comparable with published 5,000 or 30,000-image numbers.
@@ -146,7 +147,8 @@ Function, per method, with its own sampler:
 Cells with two numbers are recovery / CLIP.
 
 - **The decoder holds most of the energy in every adapter,** 80% to 94%. The ablation
-  below has been run only on LCM-LoRA.
+  below, measured by recovery, was run only on LCM-LoRA. Section 10 repeats it on four
+  methods with PickScore.
 - **PCM is the exception on time layers,** with 19% of its energy there.
 - **Hyper-SD is the weakest case for rank 1.** Its top direction keeps prompt alignment
   but only 0.62 of the image.
@@ -294,8 +296,9 @@ step, coefficient averaged over positions, top direction, full adapter.*
 - **One odd result.** For Flash Diffusion, averaging the coefficient over positions does
   worse than a constant. Not yet explained.
 
-This is not yet a way to get few-step sampling without distillation: the vectors and
-constants were read out of trained adapters.
+This alone is not a way to get few-step sampling without distillation: the vectors and
+constants were read out of trained adapters. Sections 8 and 12 train the strengths and take
+the direction from the base model.
 
 ### Partly built-in guidance
 
@@ -746,9 +749,9 @@ the style adapters it is 0.85 to 1.13 times. Along the line from the base model 
 | A shared direction is usable | Held on prompt alignment for three of four hosts, with one scale; on PickScore for held-out captions in section 11 |
 
 New at this stage, and not in any earlier version: the constant-per-layer result and the
-guidance comparison. The third version of the proposal is built around them.
+guidance comparison. The third version of the proposal was built around them.
 
-| Hypothesis in the one-page proposal | Status after sections 5 to 13 |
+| Hypothesis in the one-page proposal and the fourth version | Status after sections 5 to 13 |
 |---|---|
 | H1: one direction per layer | Held for the LoRAs on four base models; not for full fine-tunes |
 | H2: independent methods agree | Held on four base models and against full fine-tunes. In function, an adapter built from the other four methods matches the host's own on three of five methods and keeps about 70% of the gain on two |
@@ -783,6 +786,9 @@ guidance comparison. The third version of the proposal is built around them.
 .venv/bin/python scripts/study/s15_loss_gradient.py 400 200     # section 13; needs the COCO photos
 ```
 
-The first run downloads about 2 GB of adapters from Hugging Face. The image-generating
-scripts take about two hours in total on the laptop above. Outputs are in
-`results/study/`.
+The first run downloads about 2 GB of adapters from Hugging Face. Install with
+`pip install -e '.[dev,study]'`; the `study` extra adds clean-fid for FID and KID. On the
+laptop above, the image-generating scripts of sections 1 to 4 take about two hours in
+total. From the run logs, section 9 takes about 2.6 hours, section 10 about 0.8, section
+11 about 1.3 including the search on the development prompts, section 8 about 16 minutes per
+variant and section 12's gradient 11 minutes. Outputs are in `results/study/`.

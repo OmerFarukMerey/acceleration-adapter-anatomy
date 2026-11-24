@@ -1,47 +1,43 @@
-# Pilot experiments
+# The LCM-LoRA pilot
 
-These are the pilots of 10 to 15 November 2026. The cross-method study that followed is
-described in [`docs/RESULTS.md`](../docs/RESULTS.md), with code in `scripts/study/`.
+The pilot that started the project, and its controls. Both take one adapter, LCM-LoRA for
+Stable Diffusion 1.5, apart in weight space. The cross-method study that followed is in
+[`docs/RESULTS.md`](../docs/RESULTS.md), with code in `scripts/study/`.
 
-Run on 2026-11-10 on an Apple M4 Pro (24 GB, MPS). Pilots A, B and D use `segmind/tiny-sd`
-with DDIM and guidance 7.5, measured against the same-seed 50-step image. Pilot C uses
-Stable Diffusion 1.5 with LCM-LoRA.
+Run on an Apple M4 Pro (24 GB, MPS): pilot C on 10 November 2026, its controls by 15
+November. 4 steps, no guidance, the 16 development prompts, one seed.
 
-| Pilot | Script | Output | Split |
+| Pilot | Asks | Script | Output |
 |---|---|---|---|
-| A1 phase attribution | `scripts/pilots/a1_phase_attribution.py` | `results/pilots/a1_phase_attribution.json` | 24 dev |
-| A2 step allocation | `scripts/pilots/a2_step_allocation.py` | `results/pilots/a2_step_allocation.json` | dev, then 72 sealed |
-| B block clocks | `scripts/pilots/b_block_clocks.py` | `results/pilots/b_block_clocks.json` | dev, then 72 sealed |
-| C adapter anatomy | `scripts/pilots/c_lora_anatomy.py` | `results/pilots/c_lora_anatomy.json`, `.png` | 16 dev |
-| D compass search | `scripts/pilots/d_compass_search.py` | `results/pilots/d_compass_search.json` | 8 dev, then 72 sealed |
+| C adapter anatomy | Which parts of the adapter carry the few-step ability: one layer type alone, everything but that type, one block group alone, and the whole adapter cut to a lower rank | `scripts/pilots/c_lora_anatomy.py` | `results/pilots/c_lora_anatomy.json`, `.png` |
+| C2 controls | Is the low-rank result about the top directions, or would any few directions do: random directions, the directions truncation throws away, ranks 1 and 2, a decoder-only version | `scripts/pilots/c2_lora_controls.py` | `results/pilots/c2_lora_controls.json`, `.png` |
 
-Run any of them with `.venv/bin/python scripts/pilots/<name>.py`. They take 10 to 25
-minutes each. Pilot C downloads a 135 MB adapter on first use.
+Run either with `.venv/bin/python scripts/pilots/<name>.py`. Pilot C downloads a 135 MB
+adapter on first use.
 
 ## How to read the numbers
 
-- **Texture (T):** mean absolute deficit in the 1/16-1/4 cycles-per-pixel bands, in dB.
-- **LPIPS (L):** perceptual distance to the reference.
-- **Composition:** RMS difference after a Gaussian blur with sigma 16, on a 0-255 scale.
-- **Score:** `T/T_base + L/L_base`, where 2.0 is unedited 6-step sampling.
-- **Steps matched:** the unedited step count that gives the same value.
-- Lower is better for all of them.
+- **Recovery:** 1 minus the LPIPS distance to the full adapter's same-seed image, divided
+  by the distance of the base model with no adapter. 1 means identical to the full
+  adapter, 0 means no better than no adapter. Brackets are 95% paired bootstrap intervals
+  over prompts.
+- **CLIP:** similarity between the image and its prompt.
+- **Texture:** mean absolute difference from the full adapter's image in the 1/16 to 1/4
+  cycles-per-pixel bands, in dB.
 
-## Method notes
+## What came of it
 
-- Pilots A, B and D use a hand-written DDIM loop in `src/wspd/lab.py`. It differs from the
-  diffusers loop by 0.64/255 mean pixel value on the trailing schedule, because diffusers
-  reads the next alpha one index off. Dev numbers therefore show 4.57 for the pilot loop
-  and 4.52 for the cached baseline.
-- The per-block clock is byte-identical to a single shifted timestep when all blocks share
-  one clock.
-- Selection rules were written into each script before it ran: lowest dev score, then one
-  evaluation on the sealed prompts.
-- Brackets in the idea files are 95% paired bootstrap intervals over prompts.
+- The pilot's own reading was "effectively rank 4, mostly in the decoder, time path idle".
+  It is kept as first written in
+  [01-anatomy-of-acceleration-adapters.md](01-anatomy-of-acceleration-adapters.md).
+- The controls and the first study sharpened rank 4 to rank 1 (results, section 1).
+- The location result was repeated on four methods with a quality score (section 10).
 
 ## Limits
 
-- The sealed prompts were already used once by the main experiment and are reused here.
-- Pilot C measures closeness to the full adapter's image, not image quality, on 16 prompts
-  and one adapter.
-- No pilot was repeated with other seeds.
+- Both pilots measure closeness to the full adapter's image, not image quality, on 16
+  prompts and one adapter.
+- Neither was repeated with other seeds.
+
+The study scripts `s2_function.py`, `s3_mechanism.py` and `s6_strength.py` import the
+scoring and image-sheet helpers from `c_lora_anatomy.py`.

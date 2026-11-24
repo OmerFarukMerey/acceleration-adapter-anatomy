@@ -1,28 +1,33 @@
 # Literature review
 
 **What do distillation methods agree on?** Background and related work for the
-[project proposal](../research_ideas/proposal.md). Written 15 November 2026; updated 16
-November with what the [first study](RESULTS.md) found.
+[project proposal](../research_ideas/proposal.md). Written 15 November 2026; last updated
+24 November 2026 with the [results](RESULTS.md) through section 13.
 
 The project asks whether few-step "acceleration" adapters trained with different
 distillation methods make the same change to a diffusion model, what that change is, and
 whether it can be had without full distillation. This review covers
 the work that question rests on, the work closest to it, and what is still open. A
 plain-language introduction to the same ideas is in
-[plan-explained.md](../research_ideas/plan-explained.md); a reading order is in the
-[study guide](../research_ideas/study-guide.md).
+[plan-explained.md](../research_ideas/plan-explained.md); the reading order, with a
+question for each paper, is in the [study guide](../research_ideas/study-guide.md).
 
 ## How far to trust this review
 
-No paper here has been read in full by a person on this project yet. Each citation
-carries a mark for how it is known:
+No paper here had been read in full by the author on 24 November 2026, and this review
+has not yet been revised against the author's own reading. Each citation carries a mark
+for how it is known:
 
 | Mark | Meaning |
 |---|---|
 | **[A]** | Read in full or in large part by an automated reader on 15 November 2026 |
 | **[R]** | Read in full or in main text by an automated reader on 19 November 2026 |
 | **[S]** | Confirmed by a web search (abstract, summary or snippet) on 10-15 November 2026 |
-| **[M]** | Written from memory. The arXiv number and the description are unverified |
+| **[M]** | Description written from memory and unverified |
+
+Every arXiv number in this review, whatever its mark, was checked against the arXiv
+listing on 24 November 2026 and opens the paper named. Citations without a mark (LoRA-GA
+and LoRA-One) are known from a web search on 21 November.
 
 Open each paper before citing it. Claims about what a paper does **not** do are the least
 reliable kind and matter most for positioning, so check those first.
@@ -67,11 +72,12 @@ One line of work keeps the weights and changes the sampler.
   [M]) rescales the UNet's backbone and skip features at inference. It is useful here as
   evidence that the decoder half of the UNet controls detail and denoising strength.
 
-**Relation to this project.** Our [first experiment](EXPERIMENT_1.md) let LLM agents edit
-the weights of a small model. They converged on edits that reproduce the second group
-above, and the same correction applied in the sampler gave nearly identical images. That
-result is why the project moved from sampler-like edits to distillation, which changes
-what the network computes and reaches 1 to 4 steps.
+**Relation to this project.** The project began with an experiment, since removed from
+the repository, in which LLM agents edited the weights of a small model. They converged on
+edits that reproduce the second group above, and the same correction applied in the
+sampler gave nearly identical images. That result is why the project moved from
+sampler-like edits to distillation, which changes what the network computes and reaches 1
+to 4 steps.
 
 ## 3. Step distillation
 
@@ -84,8 +90,8 @@ The methods differ in what the student is asked to match.
 | Consistency (trajectory) | Any point on a sampling path must map to the same final image | Consistency models, [2303.01469](https://arxiv.org/abs/2303.01469) [M]; LCM, [2310.04378](https://arxiv.org/abs/2310.04378) [M]; TCD, [2402.19159](https://arxiv.org/abs/2402.19159) [M]; PCM, [2405.18407](https://arxiv.org/abs/2405.18407) [M] |
 | Distribution matching | The set of student images must match the set of teacher images; no per-path target | DMD, [2311.18828](https://arxiv.org/abs/2311.18828) [M]; DMD2, [2405.14867](https://arxiv.org/abs/2405.14867) [M] |
 | Adversarial | A discriminator judges student outputs | ADD / SDXL-Turbo, [2311.17042](https://arxiv.org/abs/2311.17042) [M]; SDXL-Lightning, [2402.13929](https://arxiv.org/abs/2402.13929) [M] |
-| Hybrid | Consistency on path segments, plus adversarial and human-preference losses | Hyper-SD, [2404.13686](https://arxiv.org/abs/2404.13686) [M] |
-| Flow straightening | Make the sampling path piecewise straight, so few steps suffice | PeRFlow, [2405.07510](https://arxiv.org/abs/2405.07510) [S]; Flash Diffusion, [2406.02347](https://arxiv.org/abs/2406.02347) [M] |
+| Hybrid | Several of the losses above in one method | Hyper-SD (consistency on path segments, adversarial, human preference), [2404.13686](https://arxiv.org/abs/2404.13686) [M]; Flash Diffusion (teacher matching, adversarial, distribution matching), [2406.02347](https://arxiv.org/abs/2406.02347) [M]; TDD (consistency with chosen target timesteps), [2409.01347](https://arxiv.org/abs/2409.01347) [M] |
+| Flow straightening | Make the sampling path straight, so few steps suffice | Rectified flow, [2209.03003](https://arxiv.org/abs/2209.03003) [M]; InstaFlow, [2309.06380](https://arxiv.org/abs/2309.06380) [M]; PeRFlow, [2405.07510](https://arxiv.org/abs/2405.07510) [S] |
 
 Three points from this literature shape the project:
 
@@ -101,8 +107,9 @@ Three points from this literature shape the project:
   separately (Meng et al., [2210.03142](https://arxiv.org/abs/2210.03142) [M]). Two recent
   papers argue that few-step evaluation is confounded by this: Guidance Matters
   ([2602.22570](https://arxiv.org/abs/2602.22570) [S]) and AGD
-  ([2503.07274](https://arxiv.org/abs/2503.07274) [S]). Our pilot baseline has this
-  confound, and the proposal adds a guided baseline to separate the two effects.
+  ([2503.07274](https://arxiv.org/abs/2503.07274) [S]). Our "no adapter" baseline has
+  this confound. Section 7 of the results adds a guided baseline at 4 steps: it matches
+  the adapters on CLIP score and is 0.8 to 1.4 PickScore points below them.
 
 ## 4. LoRA and the low-rank structure of fine-tuning
 
@@ -115,10 +122,10 @@ succeeds inside a very low-dimensional subspace of the weights (Aghajanyan et al
 Section 7 of the LoRA paper is the direct ancestor of our analysis [M]. It takes the
 singular value decomposition of trained adapters and reports that the top singular
 directions are shared between adapters of different rank and between random seeds, while
-the remaining directions are not. Our pilot finds the same shape, more extreme: one
-direction per layer carries LCM-LoRA, and the other 63 do nothing measurable.
+the remaining directions are not. Our results have the same shape, more extreme: in all
+five methods one direction per layer carries the adapter, and the other 63 add little.
 
-Later work adds three cautions:
+Later work adds four cautions:
 
 - **Dominant LoRA directions may be artifacts of LoRA.** Shuttleworth et al.
   ([2410.21228](https://arxiv.org/abs/2410.21228) [S]) show that LoRA introduces
@@ -161,10 +168,11 @@ same base model and combined with style LoRAs. The vocabulary comes from **task
 arithmetic** (Ilharco et al., [2212.04089](https://arxiv.org/abs/2212.04089) [M]), where
 weight differences are treated as vectors that can be added, negated and scaled.
 
-Most later methods also release LoRA versions. For Stable Diffusion 1.5 a search
-confirmed LCM-LoRA, TCD-LoRA and Hyper-SD LoRAs at 1, 2, 4 and 8 steps; a DMD2 LoRA was
-found for SDXL only [S]. PeRFlow releases its result as delta weights that transfer
-across pipelines [S].
+Most later methods also release LoRA versions. For Stable Diffusion 1.5 the study uses
+nine: LCM-LoRA, TCD, two PCM versions, Hyper-SD at 1, 2, 4 and 8 steps, and Flash
+Diffusion. A DMD2 LoRA exists for SDXL only, where eight methods have public adapters;
+SD3 Medium and FLUX.1-dev have three each (section 5 of the results). PeRFlow releases
+its result as delta weights that transfer across pipelines [S].
 
 This is what makes the project possible on a laptop. The few-step ability of each method
 exists as a small public file for the same base model, so methods can be compared in
@@ -187,24 +195,29 @@ rank 256.
 | Object studied | Full distilled checkpoints | Published LoRA adapters |
 | Methods compared | One per base model | Five on one base model |
 | Breakdown by block or layer type | No | Yes |
-| Rank result | 30% of rank for 93% | 1 of 64 directions keeps prompt alignment, in five methods |
-| Best rank for its own adapter | 256 | Not yet trained |
+| Rank result | 30% of rank for 93% | 1 of 64 directions keeps the adapter's PickScore to within 0.05 points on four methods and 0.20 on the fifth |
+| What it trains | A rotation-based adapter, best at rank 256 | 1,112 strengths on a fixed direction (pilot) |
 
-The rank results point in different directions, and the difference needs an explanation.
-Candidates: full fine-tuning against LoRA training (the intruder-dimension effect), one
-step against four steps, and a quality metric against our closeness metric.
+The rank results looked contradictory, and section 6 of the results explains most of the
+difference: it is full fine-tuning against LoRA. A fully fine-tuned DMD2 student, WaDi's
+own object, is not rank 1 in our measurement either. It needs 22% of the rank for 90% of
+the energy, in the same range as WaDi's figure, although the two are measured differently.
+Concentration in one direction belongs to the LoRAs.
+The direction itself does not: the full fine-tunes share it at 0.12 to 0.38.
 
 **MTEO** ([2603.22375](https://arxiv.org/abs/2603.22375) [A]) gets few-step sampling by
 training only per-step, per-layer time embeddings on a frozen backbone. It contains no
 adapter analysis. It sits in tension with our pilot, where the time-embedding projections
-hold 1% of LCM-LoRA's energy and recover nothing alone. Both can be true: the time path
-may be a sufficient route that LoRA distillation does not take.
+hold 1% of LCM-LoRA's energy and recover nothing alone. Section 10 of the results agrees:
+in four methods the time projections can be removed with no measurable loss. Both can be
+true: the time path may be a sufficient route that LoRA distillation does not take.
 
-The first study suggests a closer link. In all five methods, the adapter's main direction
-can be replaced by a fixed vector added to each layer's output, and a vector per layer and
-step does better still. A learned time embedding per layer is one way to supply exactly
-that: a step-dependent constant. Whether MTEO's embeddings and our constants are the same
-change is an open question in the proposal.
+Our results suggest a closer link. In four of five methods, the adapter's main direction
+can be replaced by a fixed vector added to each layer's output. A vector per layer and
+step gives images closer to the full adapter's, though not a higher PickScore. A learned
+time embedding per layer is one way to supply exactly that: a step-dependent constant.
+Whether MTEO's embeddings and our constants are the same change is an open question in
+the proposal.
 
 **B-LoRA** (Frenkel et al., ECCV 2024, [2403.14572](https://arxiv.org/abs/2403.14572)
 [S]) is the precedent for block-level analysis. It finds that two specific SDXL blocks
@@ -332,9 +345,11 @@ The main question is an instance of an older one.
 | CMMD | Alternative to FID using CLIP features | Newer, fewer published comparisons | [2401.09603](https://arxiv.org/abs/2401.09603) [M] |
 | HPSv2, ImageReward, PickScore | Predicted human preference | Learned from specific user populations | [2306.09341](https://arxiv.org/abs/2306.09341), [2304.05977](https://arxiv.org/abs/2304.05977), [2305.01569](https://arxiv.org/abs/2305.01569) [M] |
 
-Our pilots use LPIPS distance to the full adapter's image and CLIP score. That shows a
-truncated adapter behaves like the full one. It does not show the images are good. The
-proposal adds clean-FID and one preference metric on at least 5,000 prompts.
+The first study uses LPIPS distance to the full adapter's image and CLIP score. That
+shows a truncated adapter behaves like the full one. It does not show the images are
+good. The later sections add PickScore, CMMD, clean-FID and KID on 100 to 500 COCO
+captions. FID at 500 images cannot be compared with published numbers; the proposal's
+5,000-caption run is still open.
 
 ## 10. The gap
 
@@ -345,7 +360,7 @@ Putting the sections together, with what the first study adds:
 | Can few-step ability be stored as a low-rank adapter? | Yes: LCM-LoRA and successors | |
 | Can LoRAs be truncated? | Yes: known in research and in community practice | Down to rank 1, in five methods; community rank-1 resizes exist without measurement |
 | How do distilled weights differ from the teacher's? | WaDi, for full checkpoints, one method per model | New directions, not the base model's dominant ones; full fine-tunes are not rank 1 but share the adapters' top direction (0.12 to 0.38) |
-| Which blocks and layer types carry acceleration? | No paper found | Decoder holds 80% to 94% of energy in nine adapters |
+| Which blocks and layer types carry acceleration? | No paper found | Decoder holds 80% to 94% of energy in nine adapters; removing the up blocks loses 81% to 98% of the gain in four methods, and convolutions matter most |
 | Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control | Style adapters: no shared output direction |
 | **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random; also on SDXL, SD3 Medium and FLUX.1-dev** |
 | **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: an adapter built from the other four methods, with one scale chosen on other prompts, matches the host's own on three of five methods and keeps about 70% of the gain on two** |
@@ -375,9 +390,14 @@ Results from this review that could undercut it, and the control for each:
 
 ## What to read first
 
-1. LoRA, section 7, then LCM-LoRA.
+The [study guide](../research_ideas/study-guide.md) has the order with a question for
+each paper. In short:
+
+1. LoRA, section 7; then LCM's loss and LCM-LoRA.
 2. WaDi in full. It decides the positioning.
 3. The intruder-dimensions paper.
-4. The Universal Weight Subspace Hypothesis and EigenLoRAx.
+4. LoRA-GA and LoRA-One, for the gradient result. Known from abstracts only, so this is
+   the claim most at risk.
 5. MTEO, BitFit and DiffFit, for the constant-shift result.
-6. TCD, PCM, Hyper-SD and Flash Diffusion, for how each adapter was trained.
+6. TCD, PCM, Hyper-SD and Flash Diffusion, for how each adapter was trained and on what
+   data.

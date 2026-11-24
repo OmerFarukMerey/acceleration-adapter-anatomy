@@ -1,8 +1,9 @@
 # The plan, explained from the start
 
 A plain-language companion to [proposal.md](proposal.md), written for someone new to
-generative AI. It explains what we are going to do, why, and what each result would mean.
-Numbers are from the first study in this repository; the full tables are in
+generative AI. It explains what the project asks, what has been found so far, what is
+left, and what each result would mean. Updated 24 November 2026. The numbers are from the
+studies in this repository; the full tables are in
 [`docs/RESULTS.md`](../docs/RESULTS.md).
 
 ## 1. The problem: diffusion models are slow
@@ -69,9 +70,15 @@ change into its directions, and tested what happens when we keep only some of th
 So in each of these adapters, the ability to sample in 4 steps sits in **one direction per
 layer**. That direction holds 93% to 98% of the change's energy.
 
-We also found that the **decoder** half of the network matters most. Stable Diffusion's
-network first compresses the image (encoder) and then rebuilds it (decoder). In every
-adapter, 80% to 94% of the change is in the decoder.
+We then checked this with a quality score on 500 photo captions. **PickScore** is a model
+trained on people's votes about which image they prefer. Adding an adapter raises it by
+about 3 points. Keeping only the strongest direction costs at most 0.05 of those points
+in four of the five methods, and 0.2 in the fifth.
+
+The **decoder** half of the network matters most. Stable Diffusion's network first
+compresses the image (encoder) and then rebuilds it (decoder). In every adapter, 80% to
+94% of the change is in the decoder. In the four methods where we removed the decoder's
+part of the adapter, 81% to 98% of its benefit was gone.
 
 ## 6. What we found: the methods partly agree
 
@@ -96,9 +103,18 @@ We checked one thing that could have faked this: that one adapter was built on t
 another. It was not. Training leaves a fingerprint of its random starting point, and
 adapters from different groups have unrelated fingerprints.
 
-The agreement is partial, not perfect. Putting one method's direction straight into
-another's place gives images that are too contrasty or too soft. Turn one "volume knob"
-and they come right: the direction was good, only its strength was off.
+**It holds on bigger models.** We repeated the comparison on three larger base models:
+SDXL, SD3 Medium and FLUX. Independent methods agree there too (0.14 to 0.68), and the
+unrelated comparisons stay at or below 0.10. See `results/study/s8_models.png`.
+
+**An adapter built from the others works.** The agreement is partial, not perfect.
+Putting one method's direction straight into another's place gives images that are too
+contrasty or too soft. Turn one "volume knob" and they come right: the direction was
+good, only its strength was off. So for each method we built a replacement adapter that
+uses nothing from that method: the direction and strength come from the other four, and
+one volume setting is chosen on separate prompts. On 100 new captions it is as good as
+the method's own adapter for three of the five methods, and keeps about 70% of the
+benefit for the other two. See `results/study/s13_transfer.jpg`.
 
 ## 7. What we found: the direction is almost a constant push
 
@@ -108,8 +124,10 @@ the model is making images. It barely does. It is nearly the same number for eve
 prompt, every part of the image and every step.
 
 So we tried the simplest version: forget the input, and add the *same* fixed push to
-each layer's output every time. That still gives images that match the prompt: as well
-as the real adapter in four of the five methods, and somewhat less well in the fifth. Look at the second column of `results/study/s3_mechanism_tcd.png`.
+each layer's output every time. On 500 captions that costs 0.01 to 0.15 PickScore points
+in four of the five methods, out of the 3 points an adapter is worth. The fifth method,
+Flash Diffusion, loses 0.7. On the larger SDXL model it works for all four methods we
+tested. Look at the second column of `results/study/s3_mechanism_tcd.png`.
 
 In plain terms, a large part of what distillation teaches the model is "shift each
 layer's output by a fixed amount". That is a much simpler thing than an adapter with
@@ -118,49 +136,79 @@ millions of numbers.
 We also tested a common suspicion, that these adapters are only **guidance** baked into
 the model. They partly are, at the first step, and less so afterwards.
 
-## 8. The question now
+## 8. What we found: the direction can be trained, and found without any adapter
+
+**Training only the strength.** If the direction is known, training does not have to
+find it. We froze the whole model, fixed the shared direction, and trained only how
+strongly to push along it: 1,112 numbers, where LCM-LoRA has 67 million. In 4 steps
+PickScore went from 18.8 to 20.9. The public adapters score 21.3 to 21.9. The same
+training on a random direction reached 19.8.
+
+**Finding the direction from the original model.** In that test the direction came from
+the public adapters, so someone still had to do the expensive distillation first. Can the
+original model tell us the direction on its own?
+
+Training works by computing a **gradient**: for every weight, which way to nudge it so
+that the error gets smaller. We wrote down a simple few-step training error and computed
+its gradient on the original model, before any training. The strongest direction of that
+gradient agrees with the direction the five methods share: cosine 0.44, against 0.03 for
+a random direction. Training the 1,112 strengths on it gives 20.75, almost the same as
+with the adapters' own direction, and no adapter was used anywhere.
+
+We repeated this with the actual training error of one method (LCM). Its gradient points
+the same way.
+
+So part of the reason the methods agree is simple: at the starting point, their training
+errors all pull the model the same way. It is not the whole reason. The adapters agree
+with each other more than with either gradient.
+
+## 9. The question now
 
 > Is few-step ability one shared, simple change to the model, whatever method found it?
 > If so, what is that change, and can we get it without the expensive training?
 
 It has three parts, and each is a block of work:
 
-- **Is it universal?** We tested one base model with 16 prompts. Does it hold on thousands
-  of prompts, on proper quality scores, and on bigger models?
-- **What is it?** Why is a constant push enough? Where does that push come from? How
-  much of it is guidance?
-- **Can we use it?** If the direction is known in advance, training only has to find its
-  strength: a few hundred numbers, not millions.
+- **Is it universal?** It holds on four base models when we compare weights, and on two
+  when we generate images. Does it hold on thousands of captions and on the newest models?
+- **What is it?** A constant push per layer, pointing where the first training step
+  would go. Why is that enough, and how much of it is guidance?
+- **Can we use it?** A thousand trained numbers get most of the way. Can they get all
+  the way?
 
-## 9. What we will do, step by step
+## 10. What is done and what is left
 
-### Part A. Check that it is universal (person A)
+### Part A. Check that it is universal
 
-1. **Measure image quality properly.** So far we measured how close an image is to the
-   full adapter's image, and whether it matches the prompt. A paper needs quality scores
-   on thousands of prompts:
-   - **FID**: how close the set of generated images is to real photos, statistically.
+1. **Measure image quality properly.** Done on 500 captions with three kinds of score:
+   - **FID** and **CMMD**: how close the set of generated images is to real photos.
    - **CLIP score**: how well an image matches its prompt.
-   - **A preference score**: a model trained on human votes about which image looks better.
-2. **Repeat on bigger, newer models.** Stable Diffusion 1.5 is small and old, which is
-   why it runs on a laptop. Reviewers will want SDXL and a newer transformer-based model
-   such as FLUX. This needs a proper GPU.
+   - **PickScore**: which image people would prefer.
 
-### Part B. Explain it (person B)
+   Left: 5,000 captions with several random seeds, which is what published papers report.
+   This needs a proper GPU.
+2. **Repeat on bigger, newer models.** Done for the weights on SDXL, SD3 and FLUX, and
+   with generated images on SDXL. Left: generated images on SD3 and FLUX. Needs a GPU.
 
-1. **Take the constant push apart.** Which layers need it? Does it need to differ from
-   step to step?
-2. **Predict it.** Try to work out the push from the original model alone, without
-   opening any adapter. If that works, no distillation is needed to find it.
-3. **Separate out guidance.** Compare against the original model run with guidance.
+### Part B. Explain it
 
-### Part C. Use it (both)
+1. **Take the constant push apart.** Done: one push per layer is as good as one per
+   layer and step. Left: which kinds of layer need it, and why one method is an exception.
+2. **Find where it comes from.** Done for two training errors (section 8). Left: the
+   training errors that use a critic network, which is where the methods differ most.
+3. **Separate out guidance.** Partly done. Left: compare with an adapter trained only to
+   replace guidance.
 
-1. **Fit only the strength.** Keep the shared direction fixed and find the best strength
-   per layer. Compare against the real adapters.
-2. **Train the constant push directly.** Needs a GPU.
+### Part C. Use it
 
-## 10. Why this matters, and what could go wrong
+1. **Fit only the strength.** A small test is done (section 8). Left: train longer and
+   see whether the gap to the public adapters closes.
+2. **Train the constant push directly.** A small test is done and did worse than fitting
+   the strength. Left: a better training method.
+3. **Carry it over.** Left: check that the direction also works on customised versions
+   of the model, as LCM-LoRA does in practice.
+
+## 11. Why this matters, and what could go wrong
 
 Most research on fast sampling looks at the images. We look at the numbers inside the
 model and ask what changed. That is what "weight space" means. It is the same theme the
@@ -168,15 +216,16 @@ project started with, without the claim that an LLM can read weights.
 
 | Risk | What it would mean |
 |---|---|
-| The results fade on thousands of prompts or on quality scores | The first study was too small to trust. We keep whatever survives |
-| It only holds on Stable Diffusion 1.5 | An interesting fact about one old model, not a general finding |
-| Someone has already shown the constant-push result | We would confirm and extend it, not discover it. We must search carefully first |
+| The results fade on thousands of captions | The tests so far were too small to trust. We keep whatever survives |
+| It only works in images on Stable Diffusion 1.5 and SDXL | A finding about older models. The weights of newer models agree, but that is weaker evidence |
+| Someone has already shown the constant-push result | We would confirm and extend it, not discover it. The closest papers are on the reading list |
+| The gradient result is already expected | Theory says a LoRA follows its first gradient. What would be new is that different training recipes share that gradient |
 | The groups agree because they trained on the same images | The shared direction would say something about the data, not about speed. Hard to rule out without training our own |
-| No access to a GPU | The laptop part still makes a complete term project, but probably not a conference paper |
+| No access to a GPU | The laptop results still make a complete term project, but probably not a conference paper |
 
-We decide on 6 December, after the quality scores are in, how much of the claim stands.
+We decide on 6 December how much of the claim stands.
 
-## 11. Glossary
+## 12. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -187,15 +236,20 @@ We decide on 6 December, after the quality scores are in, how much of the claim 
 | Weight matrix | A layer's table of learned numbers |
 | `ΔW` | The change to a weight matrix after training |
 | Adapter, LoRA | A small file holding `ΔW` in compressed form |
+| Fully fine-tuned model | A distilled model shipped whole, not as an adapter |
 | Rank | How many independent directions a change contains |
 | Direction | One "if input looks like `v`, push output along `u`" piece of a change |
 | SVD | The method that splits a change into directions, strongest first |
 | Energy | The squared strength of a direction; shares of energy add up to 100% |
 | Cosine | A measure of the angle between two patterns: 1 same, 0 unrelated |
+| Gradient | For every weight, the nudge that reduces the training error fastest |
 | UNet, encoder, decoder | Stable Diffusion's network, its compressing half and its rebuilding half |
 | Guidance | A trick that runs the network twice per step to follow the prompt more closely |
 | LPIPS | A measure of how different two images look to a neural network |
 | Recovery | Our measure of how much of the full adapter's effect a part reproduces: 1 is all, 0 is none |
 | CLIP score | How well an image matches its prompt, judged by a neural network |
+| PickScore | A score trained on people's choices between images; higher is better |
+| FID, CMMD | Distances between a set of generated images and real photos; lower is better |
+| Held-out captions | Captions that played no part in choosing any setting |
 | Constant shift | The same fixed push added to a layer's output every time, whatever the input |
 | Style adapter | A LoRA that teaches an art style; our example of a LoRA unrelated to speed |
