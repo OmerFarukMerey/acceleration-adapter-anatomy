@@ -1,0 +1,14 @@
+{
+ "ds8": {
+  "repository": "Lykon/dreamshaper-8",
+  "revision": "a7e52b98680b1ba8ff7bce97c7f9f2e2e5337917",
+  "relative_change": 0.21454180990871716,
+  "change_over_lcm_lora": 136.3027200456387
+ },
+ "rv51": {
+  "repository": "SG161222/Realistic_Vision_V5.1_noVAE",
+  "revision": "1e9f017a7b1eaefb63a1900ea6c5953d2739fd21",
+  "relative_change": 0.1682154759503937,
+  "change_over_lcm_lora": 106.87066980354945
+ }
+}

@@ -93,3 +93,10 @@ def test_device_lock_can_be_taken_and_released(tmp_path, monkeypatch):
     for _ in range(2):
         with device_lock():
             assert (tmp_path / "runs" / ".device.lock").exists()
+
+
+def test_device_can_be_overridden(monkeypatch):
+    from wspd.model import best_device
+
+    monkeypatch.setenv("WSP_DEVICE", "cpu")
+    assert best_device() == "cpu"

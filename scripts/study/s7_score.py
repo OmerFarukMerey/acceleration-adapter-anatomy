@@ -10,7 +10,7 @@ Per arm, on the captions that every arm has finished:
   lpips_full  LPIPS to the same adapter's full version on the same seed
 Differences in clip and pick against the adapter's full version come with paired bootstrap intervals.
 
-    python scripts/study/s7_score.py [--no-fid] [--trained] [--sdxl] [--ablation] [--transfer]
+    python scripts/study/s7_score.py [--no-fid] [--trained] [--sdxl] [--ablation] [--transfer] [--steps] [--kinds] [--ft_<model>]
 """
 from __future__ import annotations
 
@@ -29,10 +29,15 @@ from s7_quality import CAPTIONS, ROOT, coco_items  # noqa: E402
 from wspd import config  # noqa: E402
 from wspd.metrics import Evaluator, paired_bootstrap  # noqa: E402
 from wspd.model import best_device  # noqa: E402
+from wspd.store import device_lock  # noqa: E402
 
 REAL = CAPTIONS.parent.parent / "val2014"
 FEATS = ROOT.parent / "quality_features"
-OTHER = {"sdxl": "s11_sdxl_quality.json", "ablation": "s12_ablation_quality.json", "transfer": "s13_transfer_quality.json"}
+OTHER = {
+    "sdxl": "s11_sdxl_quality.json", "ablation": "s12_ablation_quality.json", "transfer": "s13_transfer_quality.json",
+    "steps": "s16_steps_quality.json", "kinds": "s17_layer_types_quality.json",
+    "ft_ds8": "s18_finetune_ds8_quality.json", "ft_rv51": "s18_finetune_rv51_quality.json",
+}
 PICK, PICK_PROCESSOR, CMMD_CLIP = "yuvalkirstain/PickScore_v1", "laion/CLIP-ViT-H-14-laion2B-s32B-b79K", "openai/clip-vit-large-patch14-336"
 
 
@@ -93,7 +98,8 @@ def main() -> None:
     device = best_device()
     # --trained also scores the study 10 arms, on the captions those have (fewer), into its own file.
     trained = "--trained" in sys.argv
-    # --sdxl, --ablation and --transfer score the study 11, 12 and 13 arms, each with its own feature cache and results file.
+    # --sdxl, --ablation, --transfer, --steps and --kinds score the arms of studies 11, 12, 13, 16 and 17, each with its
+    # own feature cache and results file.
     other = next((k for k in OTHER if f"--{k}" in sys.argv), None)
     root = ROOT.parent / f"quality_{other}" if other else ROOT
     tag = f"{other}_" if other else ""
@@ -195,4 +201,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with device_lock():
+        main()

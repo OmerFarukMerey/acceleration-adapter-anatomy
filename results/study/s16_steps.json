@@ -1,0 +1,78 @@
+{
+ "layers": 278,
+ "one_profile_share_of_strength_energy": 0.9933988568634881,
+ "per_step_count": {
+  "1": {
+   "sampler": "tcd",
+   "energy_in_own_top_direction": 0.9608070713028226,
+   "energy_along_shared_direction": 0.7650243988582999,
+   "energy_along_direction_of_the_other_three": 0.6510496154041674,
+   "strength_size_relative_to_4_steps": 1.1886313915326454,
+   "strength_correlation_with_4_steps": 0.9845840468986572,
+   "same_sign_as_4_steps": 1.0,
+   "number_in_the_one_profile_fit": 1.1851650464148487,
+   "strength_energy_missed_by_the_fit": 0.008115573983289746,
+   "strength_energy_by_block": {
+    "down_blocks": 0.1180239539033295,
+    "mid_block": 0.0395021436718548,
+    "up_blocks": 0.8424739024248157
+   }
+  },
+  "2": {
+   "sampler": "ddim",
+   "energy_in_own_top_direction": 0.9583746601689629,
+   "energy_along_shared_direction": 0.9316354609000973,
+   "energy_along_direction_of_the_other_three": 0.9098539618636572,
+   "strength_size_relative_to_4_steps": 1.05279708882895,
+   "strength_correlation_with_4_steps": 0.9954729829016218,
+   "same_sign_as_4_steps": 1.0,
+   "number_in_the_one_profile_fit": 1.053049091286071,
+   "strength_energy_missed_by_the_fit": 0.0018273217206728118,
+   "strength_energy_by_block": {
+    "down_blocks": 0.1389099708682002,
+    "mid_block": 0.044215401188575455,
+    "up_blocks": 0.8168746279432244
+   }
+  },
+  "4": {
+   "sampler": "ddim",
+   "energy_in_own_top_direction": 0.9559054842329503,
+   "energy_along_shared_direction": 0.9297586006056221,
+   "energy_along_direction_of_the_other_three": 0.9081387364981662,
+   "strength_size_relative_to_4_steps": 1.0,
+   "strength_correlation_with_4_steps": 1.0,
+   "same_sign_as_4_steps": 1.0,
+   "number_in_the_one_profile_fit": 1.0,
+   "strength_energy_missed_by_the_fit": 0.002305004806313575,
+   "strength_energy_by_block": {
+    "down_blocks": 0.1478332985237694,
+    "mid_block": 0.045700764824773955,
+    "up_blocks": 0.8064659366514567
+   }
+  },
+  "8": {
+   "sampler": "ddim",
+   "energy_in_own_top_direction": 0.9544406209248092,
+   "energy_along_shared_direction": 0.9000728039349671,
+   "energy_along_direction_of_the_other_three": 0.8583963704159285,
+   "strength_size_relative_to_4_steps": 0.9288060859469068,
+   "strength_correlation_with_4_steps": 0.9936077955247894,
+   "same_sign_as_4_steps": 1.0,
+   "number_in_the_one_profile_fit": 0.9227681621302516,
+   "strength_energy_missed_by_the_fit": 0.015234347592518894,
+   "strength_energy_by_block": {
+    "down_blocks": 0.15988407817672026,
+    "mid_block": 0.04931718407452845,
+    "up_blocks": 0.7907987377487512
+   }
+  }
+ },
+ "strength_correlation_between_step_counts": {
+  "1|2": 0.993643430083225,
+  "1|4": 0.9845840468986572,
+  "1|8": 0.9643367126145498,
+  "2|4": 0.9954729829016218,
+  "2|8": 0.9803366439746735,
+  "4|8": 0.9936077955247894
+ }
+}

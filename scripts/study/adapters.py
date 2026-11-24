@@ -129,13 +129,15 @@ SAMPLERS = {
 }
 
 
-def bench(n_prompts: int = 16) -> SimpleNamespace:
-    """The base model with closures to install a weight change and to sample."""
+def bench(n_prompts: int = 16, model: str = BASE, revision: str = BASE_REV, variant: str | None = None) -> SimpleNamespace:
+    """A model with closures to install a weight change and to sample. The base model unless another
+    Stable Diffusion 1.5 checkpoint is named; its UNet, VAE and text encoder are then used, with the
+    base model's tokenizer and noise schedule."""
     device = best_device()
-    kw = dict(revision=BASE_REV, torch_dtype=torch.float32)
-    unet = UNet2DConditionModel.from_pretrained(BASE, subfolder="unet", **kw).to(device).eval()
-    vae = AutoencoderKL.from_pretrained(BASE, subfolder="vae", **kw).to(device).eval()
-    text = CLIPTextModel.from_pretrained(BASE, subfolder="text_encoder", **kw).to(device).eval()
+    kw = dict(revision=revision, torch_dtype=torch.float32, use_safetensors=True, **({"variant": variant} if variant else {}))
+    unet = UNet2DConditionModel.from_pretrained(model, subfolder="unet", **kw).to(device).eval()
+    vae = AutoencoderKL.from_pretrained(model, subfolder="vae", **kw).to(device).eval()
+    text = CLIPTextModel.from_pretrained(model, subfolder="text_encoder", **kw).to(device).eval()
     tok = CLIPTokenizer.from_pretrained(BASE, subfolder="tokenizer", revision=BASE_REV)
     sched_cfg = LCMScheduler.load_config(BASE, subfolder="scheduler", revision=BASE_REV)
     state = unet.state_dict()

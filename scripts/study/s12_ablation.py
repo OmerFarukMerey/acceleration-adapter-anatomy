@@ -30,16 +30,19 @@ HOSTS = ["lcm", "tcd", "pcm", "hyper4"]
 ROOT = config.RUNS / "study" / "quality_ablation"
 
 
-def sample(b, item: dict, sampler: str) -> np.ndarray:
-    """One 4-step image without guidance for a COCO caption, with study 7's seed."""
+def sample(b, item: dict, sampler: str, steps: int = STEPS, before=None) -> np.ndarray:
+    """One image without guidance for a COCO caption, with study 7's seed. 4 steps unless stated.
+    before(step) runs ahead of each network call."""
     device = b.device
     cond = b.encode(item["caption"])
     sched = SAMPLERS[sampler](b.sched_cfg)
-    sched.set_timesteps(STEPS, device=device)
+    sched.set_timesteps(steps, device=device)
     seed = item["image_id"]
     z = torch.randn((1, 4, 64, 64), generator=torch.Generator("cpu").manual_seed(seed)).to(device) * sched.init_noise_sigma
     noise = torch.Generator("cpu").manual_seed(seed + 1)
-    for t in sched.timesteps:
+    for step, t in enumerate(sched.timesteps):
+        if before:
+            before(step)
         eps = b.unet(sched.scale_model_input(z, t), t, encoder_hidden_states=cond).sample
         extra = {"generator": noise} if sampler != "ddim" else {}
         z = sched.step(eps, t, z, **extra, return_dict=False)[0]
