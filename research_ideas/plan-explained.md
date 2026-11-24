@@ -116,6 +116,11 @@ one volume setting is chosen on separate prompts. On 100 new captions it is as g
 the method's own adapter for three of the five methods, and keeps about 70% of the
 benefit for the other two. See `results/study/s13_transfer.jpg`.
 
+**Different step counts are the same change.** One group (Hyper-SD) publishes separate
+adapters for 1, 2, 4 and 8 steps. For 2, 4 and 8 steps they turn out to be one direction
+with a different volume setting, and even the setting hardly matters. The 1-step adapter
+is a different change. See `results/study/s16_steps.jpg`.
+
 ## 7. What we found: the direction is almost a constant push
 
 Recall what a direction does: the more the input looks like pattern `v`, the harder it
@@ -129,6 +134,18 @@ in four of the five methods, out of the 3 points an adapter is worth. The fifth 
 Flash Diffusion, loses 0.7. On the larger SDXL model it works for all four methods we
 tested. Look at the second column of `results/study/s3_mechanism_tcd.png`.
 
+**Why the fifth method was different.** We split the layers by kind and tried the fixed
+push in one kind at a time. In most kinds it costs nothing. The loss came from the few
+layers that read the prompt and not the image. The prompt reaches the model as 77 slots:
+a start marker, the words, then filler. The start marker is identical for every prompt,
+and we measured that the model gives it about 80% of its attention. Our single fixed push
+was the average over all 77 slots, mostly filler, so it was the wrong number for the slot
+that counts. Flash Diffusion puts over half of its change in these layers; the other
+methods put about 5% there. With two fixed pushes in those layers, one for the start
+marker and one for the rest, Flash Diffusion's loss is more than halved, and for the
+other four methods the fixed push is as good as the full adapter. It is still the same for
+every prompt. See `results/study/s17_flash.jpg`.
+
 In plain terms, a large part of what distillation teaches the model is "shift each
 layer's output by a fixed amount". That is a much simpler thing than an adapter with
 millions of numbers.
@@ -141,8 +158,15 @@ the model. They partly are, at the first step, and less so afterwards.
 **Training only the strength.** If the direction is known, training does not have to
 find it. We froze the whole model, fixed the shared direction, and trained only how
 strongly to push along it: 1,112 numbers, where LCM-LoRA has 67 million. In 4 steps
-PickScore went from 18.8 to 20.9. The public adapters score 21.3 to 21.9. The same
-training on a random direction reached 19.8.
+PickScore went from 18.8 to 21.1. The public adapters score 21.3 to 21.9. The same
+training on a random direction reached 19.7.
+
+**Does knowing the direction beat training freely?** No, and at first we thought it did.
+We also trained a completely free push, 1.26 million numbers with no direction given. It
+first scored 20.5, below the 1,112 strengths. That was our mistake: its training speed
+(the learning rate) was set too high. With the speed chosen by a short search it reaches
+21.0, level with the strengths. So the direction does not give better images. It gives the
+same images with a thousand times fewer numbers to train.
 
 **Finding the direction from the original model.** In that test the direction came from
 the public adapters, so someone still had to do the expensive distillation first. Can the
@@ -152,7 +176,7 @@ Training works by computing a **gradient**: for every weight, which way to nudge
 that the error gets smaller. We wrote down a simple few-step training error and computed
 its gradient on the original model, before any training. The strongest direction of that
 gradient agrees with the direction the five methods share: cosine 0.44, against 0.03 for
-a random direction. Training the 1,112 strengths on it gives 20.75, almost the same as
+a random direction. Training the 1,112 strengths on it gives 20.95, almost the same as
 with the adapters' own direction, and no adapter was used anywhere.
 
 We repeated this with the actual training error of one method (LCM). Its gradient points
@@ -161,6 +185,13 @@ the same way.
 So part of the reason the methods agree is simple: at the starting point, their training
 errors all pull the model the same way. It is not the whole reason. The adapters agree
 with each other more than with either gradient.
+
+**It carries over to customised models.** People use these adapters on customised
+versions of the model, tuned for a look such as photo-realism. We put our reduced
+versions on two popular ones (DreamShaper 8 and Realistic Vision 5.1) without re-fitting
+anything: the single direction, the fixed push, the adapter built from the other methods
+and the trained strengths. All of them work there about as well as on the original model.
+See `results/study/s18_finetune_ds8.jpg`.
 
 ## 9. The question now
 
@@ -189,11 +220,14 @@ It has three parts, and each is a block of work:
    This needs a proper GPU.
 2. **Repeat on bigger, newer models.** Done for the weights on SDXL, SD3 and FLUX, and
    with generated images on SDXL. Left: generated images on SD3 and FLUX. Needs a GPU.
+3. **Different step counts.** Done for the one method that publishes four of them. Left:
+   whether the direction shared between methods also works at 2 and 8 steps.
 
 ### Part B. Explain it
 
 1. **Take the constant push apart.** Done: one push per layer is as good as one per
-   layer and step. Left: which kinds of layer need it, and why one method is an exception.
+   layer and step; which kinds of layer take it; and why one method was an exception
+   (section 7). Left: repeat the two-push version on new captions and on SDXL.
 2. **Find where it comes from.** Done for two training errors (section 8). Left: the
    training errors that use a critic network, which is where the methods differ most.
 3. **Separate out guidance.** Partly done. Left: compare with an adapter trained only to
@@ -203,10 +237,11 @@ It has three parts, and each is a block of work:
 
 1. **Fit only the strength.** A small test is done (section 8). Left: train longer and
    see whether the gap to the public adapters closes.
-2. **Train the constant push directly.** A small test is done and did worse than fitting
-   the strength. Left: a better training method.
-3. **Carry it over.** Left: check that the direction also works on customised versions
-   of the model, as LCM-LoRA does in practice.
+2. **Train the constant push directly.** A small test is done. With a well-chosen training
+   speed it does as well as fitting the strength, with a thousand times more numbers.
+   Left: one of the methods' real training errors.
+3. **Carry it over.** Done on two customised versions of the model (section 8). Left: more
+   of them, and customised versions of SDXL.
 
 ## 11. Why this matters, and what could go wrong
 

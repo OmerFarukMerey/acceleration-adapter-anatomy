@@ -177,3 +177,6 @@ Hypothesis turns that into a general claim.
   found the agreement between methods and the constant.
 - **19 to 21 November.** Other base models, full fine-tunes, quality metrics, the transfer
   test, the training pilot and the gradient direction (sections 5 to 13).
+- **24 November.** Step counts, the constant by layer type with the reason Flash Diffusion
+  was the exception, fine-tuned models, and the training pilot with searched learning
+  rates (sections 14 to 16, and 8 and 12 revised).

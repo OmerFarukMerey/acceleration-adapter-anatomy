@@ -2,7 +2,7 @@
 
 **What do distillation methods agree on?** Background and related work for the
 [project proposal](../research_ideas/proposal.md). Written 15 November 2026; last updated
-24 November 2026 with the [results](RESULTS.md) through section 13.
+24 November 2026 with the [results](RESULTS.md) through section 16.
 
 The project asks whether few-step "acceleration" adapters trained with different
 distillation methods make the same change to a diffusion model, what that change is, and
@@ -164,8 +164,10 @@ Later work adds four cautions:
 **LCM-LoRA** ([2311.05556](https://arxiv.org/abs/2311.05556) [M]) showed that consistency
 distillation can be trained as a LoRA instead of a full model. The authors call the
 result an "acceleration vector", and show it can be added to fine-tuned versions of the
-same base model and combined with style LoRAs. The vocabulary comes from **task
-arithmetic** (Ilharco et al., [2212.04089](https://arxiv.org/abs/2212.04089) [M]), where
+same base model and combined with style LoRAs. Section 16 of the results repeats that
+transfer with reduced forms of five adapters: the top direction, a constant per layer and
+strengths trained on the base model all carry over to two fine-tunes. The vocabulary comes
+from **task arithmetic** (Ilharco et al., [2212.04089](https://arxiv.org/abs/2212.04089) [M]), where
 weight differences are treated as vectors that can be added, negated and scaled.
 
 Most later methods also release LoRA versions. For Stable Diffusion 1.5 the study uses
@@ -213,7 +215,9 @@ in four methods the time projections can be removed with no measurable loss. Bot
 true: the time path may be a sufficient route that LoRA distillation does not take.
 
 Our results suggest a closer link. In four of five methods, the adapter's main direction
-can be replaced by a fixed vector added to each layer's output. A vector per layer and
+can be replaced by a fixed vector added to each layer's output. The fifth, Flash
+Diffusion, needs a second vector for the start token in the layers that read the prompt
+(section 15 of the results). A vector per layer and
 step gives images closer to the full adapter's, though not a higher PickScore. A learned
 time embedding per layer is one way to supply exactly that: a step-dependent constant.
 Whether MTEO's embeddings and our constants are the same change is an open question in
@@ -329,7 +333,8 @@ The main question is an instance of an older one.
 - **Baselines.** In high dimensions two random unit vectors have a cosine near zero, with
   a spread of about one over the square root of the dimension. Every agreement number
   needs this reference, and a same-method reference (Hyper-SD at different step counts)
-  for the upper end.
+  for the upper end. Section 14 of the results looks at that reference itself: the 2, 4
+  and 8-step adapters are one direction at different strengths.
 - **Functional tests.** Similar weights do not guarantee similar behaviour, and
   dissimilar weights do not rule it out. Swapping, projecting and averaging directions,
   then generating images, is the check.
@@ -364,7 +369,7 @@ Putting the sections together, with what the first study adds:
 | Do many LoRAs share a subspace? | Claimed for style LoRAs, without a random control | Style adapters: no shared output direction |
 | **Do adapters from different distillation methods share directions?** | **No paper found** | **Yes, partly: 0.29 to 0.76 against 0.02 random; also on SDXL, SD3 Medium and FLUX.1-dev** |
 | **Is the agreement specific to distillation, and functional?** | **No paper found** | **Specific: yes. Functional: an adapter built from the other four methods, with one scale chosen on other prompts, matches the host's own on three of five methods and keeps about 70% of the gain on two** |
-| **What does the shared direction do?** | **No paper found; MTEO, ReSeed and bias tuning are adjacent** | **Close to a constant per layer; partly guidance; a strength per layer on it can be trained (pilot)** |
+| **What does the shared direction do?** | **No paper found; MTEO, ReSeed and bias tuning are adjacent** | **Close to a constant per layer, with a second constant for the start token where a layer reads the prompt; partly guidance; a strength per layer on it can be trained (pilot), and a free vector with a thousand times more numbers does no better** |
 | **Where does the shared direction come from?** | **LoRA-GA and LoRA-One: a LoRA follows the top directions of its first gradient (language models, one task)** | **The gradients of a plain few-step loss and of LCM's consistency loss at the base weights agree with it at 0.44 and 0.40, and with each other at 0.67; strengths trained on the gradient direction work with no adapter** |
 
 The project's contribution, if it survives larger tests, is the last four rows.

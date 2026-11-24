@@ -20,7 +20,7 @@ shipped as a small weight change (a LoRA adapter) added to the base model. Sever
 distillation methods exist, built on different training objectives. We ask what they have
 in common inside the model.
 
-Studies on public adapters, run on one laptop from 15 to 21 November, give five results:
+Studies on public adapters, run on one laptop from 15 to 24 November, give five results:
 
 1. **Every adapter is close to one direction per layer.** One of 64 directions holds 93%
    to 98% of each adapter's energy. Keeping only that one costs at most 0.05 PickScore
@@ -33,14 +33,20 @@ Studies on public adapters, run on one laptop from 15 to 21 November, give five 
    on two.
 4. **The direction acts almost like a constant.** One fixed vector added to each layer's
    output, the same for every prompt and step, costs 0.01 to 0.15 PickScore points on four
-   of five methods, where removing the adapter costs 2.8 to 3.4.
+   of five methods, where removing the adapter costs 2.8 to 3.4. The fifth, Flash
+   Diffusion, has most of its change in the layers that read the prompt; a second constant
+   there, for the start token, halves its loss.
 5. **The direction can be found and used without the adapters.** The gradient of a plain
    few-step loss at the base weights agrees with it at 0.44 (random 0.03). Training 1,112
-   strengths on that gradient direction raises PickScore from 18.77 to 20.75; public
+   strengths on that gradient direction raises PickScore from 18.77 to 20.95; public
    adapters score 21.3 to 21.9.
 
-**Scale.** Weights on four base models. Function on SD 1.5 (500 COCO captions) and SDXL
-(100 captions), one seed each. Not done: FID on 5,000 captions with several seeds,
+Results 1, 3 and 4 also hold when the same reduced adapters are put on two fine-tuned
+versions of SD 1.5, with nothing re-fitted, and the trained strengths of result 5 keep 77%
+to 91% of their gain there.
+
+**Scale.** Weights on four base models. Function on SD 1.5 (500 COCO captions), on SDXL and
+on two SD 1.5 fine-tunes (100 captions each), one seed each. Not done: FID on 5,000 captions with several seeds,
 function tests on SD3 and FLUX, and the gradients of adversarial and distribution-matching
 losses. These need a GPU.
 
@@ -91,10 +97,10 @@ were called U1 to U3 (now H1 and H2), M1 (H3), and P1 and P2 (H4).
 
 | | Hypothesis | Supported if | Status on 24 November |
 |---|---|---|---|
-| H1 | Each adapter's weight change is close to rank 1 in every layer | Keeping only the top direction keeps the full adapter's score on a quality metric | Held on SD 1.5 at 500 captions: rank 1 costs at most 0.05 PickScore points on four of five methods and 0.20 on Flash Diffusion, FID unchanged. On SDXL (100 captions) it holds for three of four methods; Hyper-SD loses 0.23. Fully fine-tuned models are not rank 1 |
-| H2 | Adapters from independent methods agree on that direction far more than random directions or style LoRAs do | Cosine far above both references on several base models; a direction taken from other methods works on held-out captions | Weights: held on SD 1.5, SDXL, SD3 Medium and FLUX.1-dev. Function: held on three of five hosts, about 70% of the gain on the other two (100 held-out captions, SD 1.5 only) |
-| H3 | The change acts mostly as one fixed vector added to each layer's output, independent of the prompt | A fixed vector per layer keeps the full adapter's quality | Held for four of five methods on SD 1.5 (500 captions) and four of four on SDXL (100 captions). Flash Diffusion loses 0.7 points |
-| H4 | With the direction known, few-step sampling can be reached by training only a strength or a constant per layer on a frozen base model | Trained strengths approach the public adapters and beat the same budget on a random direction | Pilot positive: PickScore 18.77 to 20.90 with 1,112 strengths, 19.76 on a random direction. With the direction from a loss gradient: 20.75. The public adapters score 21.3 to 21.9 |
+| H1 | Each adapter's weight change is close to rank 1 in every layer | Keeping only the top direction keeps the full adapter's score on a quality metric | Held on SD 1.5 at 500 captions: rank 1 costs at most 0.05 PickScore points on four of five methods and 0.20 on Flash Diffusion, FID unchanged. On SDXL (100 captions) it holds for three of four methods; Hyper-SD loses 0.23. On two SD 1.5 fine-tunes it is within 0.10 points on four of five methods. Fully fine-tuned few-step models are not rank 1 |
+| H2 | Adapters from independent methods agree on that direction far more than random directions or style LoRAs do | Cosine far above both references on several base models; a direction taken from other methods works on held-out captions | Weights: held on SD 1.5, SDXL, SD3 Medium and FLUX.1-dev. Function: held on three of five hosts, about 70% of the gain on the other two (100 held-out captions on SD 1.5; the same pattern on two fine-tunes, with about 80% on those two). Within one method, Hyper-SD's 2, 4 and 8-step adapters are one direction at different strengths |
+| H3 | The change acts mostly as one fixed vector added to each layer's output, independent of the prompt | A fixed vector per layer keeps the full adapter's quality | Held for four of five methods on SD 1.5 (500 captions) and four of four on SDXL (100 captions). Flash Diffusion loses 0.7 points, and the cause is found: in the 32 layers that read the prompt, attention looks mostly at the start token, which one constant per layer misrepresents. With a second constant for that token, still the same for every prompt, Flash Diffusion keeps 90% of its gain and the other four 100% to 103% (100 captions). Constants fitted on the base model keep 90% to 110% of the gain on two fine-tunes |
+| H4 | With the direction known, few-step sampling can be reached by training only a strength or a constant per layer on a frozen base model | Trained strengths approach the public adapters and beat the same budget on a random direction | Pilot positive: PickScore 18.77 to 21.08 with 1,112 strengths, 19.70 on a random direction. With the direction from a loss gradient: 20.95. A free vector with 1.26 million numbers reaches 20.97 to 21.03, so the direction saves trained numbers and does not add quality. The public adapters score 21.3 to 21.9. On two fine-tunes the strengths keep 77% to 91% of their gain |
 
 **A side question: how much of the effect is built-in guidance?** Partly. The adapters'
 change to the output lines up with the guidance direction at the first step (cosine 0.20
@@ -130,9 +136,12 @@ Full tables, images and limits are in [`docs/RESULTS.md`](../docs/RESULTS.md).
 | On SDXL, one constant per layer stays within 0.15 PickScore points of the full adapter on four of four methods | 100 captions | 9 |
 | The up blocks carry the acceleration: removing them loses 81% to 98% of the gain; convolutions matter most | 50 captions, 4 methods | 10 |
 | An adapter built from the other four methods: within 0.1 points of the host's own or above on LCM-LoRA, TCD and Flash; 73% and 68% of the gain on PCM and Hyper-SD | 100 held-out captions | 11 |
-| 1,112 trained strengths on the shared direction: PickScore 18.77 to 20.90; random direction 19.76; a free vector with 1.26 million numbers 20.51 | 200 training captions, 100 for scoring | 8 |
-| The gradient of a plain few-step loss agrees with the shared direction at 0.44; strengths trained on it reach 20.75 | 200 captions | 12 |
+| 1,112 trained strengths on the shared direction: PickScore 18.77 to 21.08; random direction 19.70; a free vector with 1.26 million numbers 20.97 to 21.03 (learning rates searched) | 200 training captions, 100 for scoring | 8 |
+| The gradient of a plain few-step loss agrees with the shared direction at 0.44; strengths trained on it reach 20.95 | 200 captions | 12 |
 | The gradient of LCM's consistency loss agrees with the plain loss's at 0.67 and with the shared direction at 0.40 | 400 photos | 13 |
+| Hyper-SD's 2, 4 and 8-step adapters: one direction, one strength profile and one number per step count keep 88%, 99% and 106% of the gain; the 1-step adapter 60% | 100 captions | 14 |
+| A constant costs nothing in convolutions, feed-forward layers and projections. Flash Diffusion's loss is in cross-attention value layers; a second constant for the start token cuts it from 0.77 to 0.35 points and removes LCM-LoRA's | 100 captions | 15 |
+| On DreamShaper 8 and Realistic Vision 5.1, with nothing re-fitted: rank 1 within 0.10 points on four methods; base-model constants keep 90% to 110% of the gain; base-model trained strengths keep 77% to 91% of theirs | 100 captions, 2 fine-tunes | 16 |
 
 ## Method
 
@@ -147,15 +156,18 @@ Each item says what is done and what is open.
    on SDXL for four methods. Open: function tests on SD3 and FLUX, and style-adapter
    controls on those two.
 3. **Location.** Done by ablation on four methods. Open: by block depth on a transformer.
-4. **Step count.** Open. Hyper-SD's 1, 2, 4 and 8-step adapters share a starting point
-   and agree at 0.85 to 0.99. Test whether one direction with a step-dependent strength
-   covers all four.
+4. **Step count.** Done for Hyper-SD's 1, 2, 4 and 8-step adapters, which share a
+   starting point: one direction with one number per step count covers 2, 4 and 8 steps,
+   and the 1-step adapter is a different change. Open: whether the direction that
+   independent methods share also serves at 2 and 8 steps.
 5. **Full fine-tunes.** Done for DMD2, LCM DreamShaper and 2-rectified flow.
 
 ### B. Mechanism
 
 1. **Constant shift.** Done at 500 captions, with one constant per layer and with one per
-   layer and step. Open: the same by layer type, and why Flash Diffusion is the exception.
+   layer and step; by layer type at 100 captions. Flash Diffusion's exception is traced to
+   the layers that read the prompt, where two constants are needed. Open: repeat the
+   two-constant version on fresh captions, at 500 captions and on SDXL.
 2. **Where the direction comes from.** Done for two losses: the gradient at the base
    weights of a plain teacher-matching loss and of LCM's consistency loss. Open: the
    adversarial and distribution-matching losses, which is where Hyper-SD, Flash Diffusion
@@ -169,13 +181,14 @@ Each item says what is done and what is open.
 ### C. Use
 
 1. **Train strengths only.** Pilot done with 1,112 strengths (per layer and step) and
-   with 278 scales (per layer), on the adapters' direction and on the gradient direction.
-   Open: longer training, tuned learning rates, 3 seeds, one strength per block.
-2. **Train the constant.** Pilot done: a free vector per layer and step reaches 20.51,
-   below the 1,112 strengths. Open: plain gradient descent in place of Adam, which
-   section 12 suggests is why the vector missed the direction; a full distillation loss.
-3. **Transfer.** Open. Apply a direction or constant found on the base model to
-   fine-tuned versions of it, as LCM-LoRA is used in practice.
+   with 278 scales (per layer), on the adapters' direction and on the gradient direction,
+   with the learning rate searched. Open: longer training, 3 seeds, one strength per block.
+2. **Train the constant.** Pilot done: with the learning rate searched, a free vector per
+   layer and step reaches 20.97 to 21.03, level with the 1,112 strengths. Plain gradient
+   descent in place of Adam does worse (20.69). Open: a full distillation loss.
+3. **Transfer.** Done on two fine-tunes of SD 1.5: rank 1, the constants, the adapter
+   built from other methods and the trained strengths all carry over. Open: more
+   fine-tunes, and fine-tunes of SDXL.
 
 ### Controls used throughout
 
@@ -194,8 +207,8 @@ The project is done by one person. What is left, by what it needs:
 | Needs | Work |
 |---|---|
 | Reading | The eight readings in the [study guide](study-guide.md), then a revised literature review |
-| The laptop | Step count (A4); constant by layer type (B1); the free vector with plain gradient descent (C2); transfer to a fine-tuned SD 1.5 model (C3) |
-| A GPU | FID on 5,000 captions with 3 seeds (A1); function tests on SD3 and FLUX (A2); gradients of adversarial and distribution-matching losses (B2); longer training runs (C1, C2) |
+| The laptop | Done on 24 November: step count (A4), constant by layer type (B1), the free vector with plain gradient descent (C2), transfer to fine-tuned SD 1.5 models (C3). Left: the two-constant test of B1 on fresh captions and on the fine-tunes; the shared direction of independent methods at 2 and 8 steps (A4) |
+| A GPU | FID on 5,000 captions with 3 seeds (A1); function tests on SD3 and FLUX (A2); gradients of adversarial and distribution-matching losses (B2); longer training runs (C1, C2). Setup and order are in the [GPU plan](gpu-plan.md) |
 
 ## Timeline
 
@@ -204,8 +217,8 @@ Assumes the term ends in mid-January 2027.
 | Dates | Work | Output | State |
 |---|---|---|---|
 | 16-22 Nov | One-page course proposal; results sections 5 to 13 | Proposal; results at 100 to 500 captions | Done |
-| 23 Nov - 6 Dec | First reading pass; arrange GPU access; laptop tests A4 and B1 | Reading notes; revised literature review | Current |
-| 7-20 Dec | With a GPU: A1 and A2. Without: C2 and C3 on the laptop | FID table at scale, or the laptop results | |
+| 23 Nov - 6 Dec | Laptop tests A4, B1, C2 and C3 (done on 24 November, results sections 14 to 16); first reading pass; arrange GPU access | Reading notes; revised literature review | Current |
+| 7-20 Dec | With a GPU: A1 and A2. Without: the repeats left for the laptop | FID table at scale, or the laptop results | |
 | 21-27 Dec | B2 under other losses; B3 | Mechanism results | |
 | 28 Dec - 12 Jan | Write the term report | Report and presentation | |
 | Jan - Apr | Remaining GPU work; paper draft | Submission | |
@@ -282,7 +295,7 @@ circulate on model hubs without measurement. That is a handful of searches, not 
 ## Changes from the third version
 
 - The hypotheses are renamed H1 to H4, to match the one-page proposal.
-- Every hypothesis and plan item carries its state after sections 5 to 13 of the results.
+- Every hypothesis and plan item carries its state after sections 5 to 16 of the results.
 - The origin of the direction is answered differently from the plan. The third version
   proposed to predict the constant from the base model's activations on a 50-step and a
   4-step path. That was not tried; the loss gradient at the base weights was used.

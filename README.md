@@ -40,8 +40,9 @@ captions, a transfer test, a training pilot and the origin of the direction:
   1024 px), one fixed vector per layer stays within 0.15 PickScore points of the full
   adapter; removing the adapter costs 3.5 to 4.9.
 - **A strength per layer can be trained (pilot).** Frozen base model, shared direction
-  fixed, 1,112 trained numbers: PickScore 18.77 to 20.90 at 4 steps (public adapters 21.3
-  to 21.9; random direction 19.76).
+  fixed, 1,112 trained numbers: PickScore 18.77 to 21.08 at 4 steps (public adapters 21.3
+  to 21.9; random direction 19.70). A free vector with 1.26 million numbers reaches 20.97
+  to 21.03, so the direction saves trained numbers and does not add quality.
 - **An adapter built from the other methods works.** Direction and strength from the other
   four methods, one scale factor chosen on separate prompts: on 100 COCO captions it is
   within 0.1 PickScore points of the host's own adapter, or above it, for LCM-LoRA, TCD and
@@ -49,8 +50,24 @@ captions, a transfer test, a training pilot and the origin of the direction:
 - **The direction can be read from the base model.** The gradient of a plain
   teacher-matching loss at the base weights agrees with the shared direction at 0.44
   (random 0.03, style adapters 0.04 to 0.06). Strengths trained on it reach PickScore
-  20.75, with no existing adapter used. The gradient of LCM's own consistency loss points
+  20.95, with no existing adapter used. The gradient of LCM's own consistency loss points
   the same way (0.67 with the plain loss's gradient).
+
+The studies of 24 November add step counts, layer types and fine-tuned models:
+
+- **Step counts are one change at different strengths.** For Hyper-SD's 2, 4 and 8-step
+  adapters, one direction per layer with one number per step count keeps 88%, 99% and 106%
+  of the full adapter's PickScore gain. The 1-step adapter is a different change.
+- **Where the constant fails, and why.** A constant costs nothing in convolutions,
+  feed-forward layers and projections. It fails in the cross-attention layers that read
+  the prompt: attention gives about 80% of its weight to the start token, whose
+  coefficient one constant per layer misrepresents. With a second constant for that token
+  Flash Diffusion keeps 90% of its gain (79% before) and the other four methods 100% to
+  103%.
+- **The reduced forms carry over to fine-tuned models.** On DreamShaper 8 and Realistic
+  Vision 5.1, with nothing re-fitted, rank 1 is within 0.10 PickScore points of the full
+  adapter on four methods and constants fitted on the base model keep 90% to 110% of the
+  adapter's gain.
 
 ![Agreement between independent methods on four base models](results/study/s8_models.png)
 
@@ -119,10 +136,10 @@ photos. The full list of scripts, in order, is at the end of
 ## Layout
 
 ```
-research_ideas/              Proposals, plain-language plan and study guide
-docs/RESULTS.md              All results so far (sections 1 to 13)
+research_ideas/              Proposals, plain-language plan, study guide and GPU plan
+docs/RESULTS.md              All results so far (sections 1 to 16)
 docs/LITERATURE_REVIEW.md    Background and related work
-scripts/study/               The studies, s1 to s15 (adapters.py holds the adapter list)
+scripts/study/               The studies, s1 to s18 (adapters.py holds the adapter list)
 results/study/               Their outputs: JSON tables, figures and image sheets
 scripts/pilots/              The first LCM-LoRA dissection and its controls
 results/pilots/              Their outputs
